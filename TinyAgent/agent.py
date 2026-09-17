@@ -1,22 +1,31 @@
+from .llm import LLM
+from .trajectory import Trajectory
+
+
 class TinyAgent:
-    """A minimal, modular agent framework."""
- 
-    def __init__(self):
-        self.llm = None  #  Add LLM
-        self.memory = None  #  Add Memory
-        self.tools = None  # Add Tools
-        self.planner = None  #  Add Planning
- 
+    """A minimal, modular, and educational agent framework."""
+
+    def __init__(self, llm: LLM):
+        self.llm = llm
+        self.memory = None  # Chapter 4: Add Memory
+        self.tools = None  # Chapter 5: Add Tools
+        self.planner = None  # Chapter 6: Add Planning
+
+        self.trajectory = Trajectory()
+
     def run(self, task: str) -> str:
         """Run the agent on a task."""
+        self.trajectory.initialize(task)
         return self._step(task)
- 
+
     def _step(self, task: str) -> str:
         """Perform a single step."""
-        # Placeholder - will be implemented  
-        return f"Received: {task}"
- 
-    def _execute_action(self, action: str) -> str:
+        messages = [{"role": "user", "content": task}]
+        response = self.llm.generate(messages)
+        self.trajectory.add(response)
+        return response.content
+
+    def _execute_action(self, action: str) -> str | None:
         """Execute a tool action."""
-        # Placeholder - will be implemented  
+        # Placeholder - will be implemented in later chapters
         return f"Executed action: {action}"
