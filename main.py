@@ -33,28 +33,6 @@ def main():
     result = agent.run("Hello! Introduce yourself briefly.")
     print("Agent:", result)
 
-    print("\n--- Embeddings Test ---")
-    embedding_model = EmbeddingModel(model="all-minilm:22m", provider="ollama")
-
-    # Create embeddings
-    embedding_a = embedding_model.embed("I love flamingos.")
-    embedding_b = embedding_model.embed("Dolphins use echolocation.")
-    embedding_c = embedding_model.embed("Flamingos are pink birds.")
-     
-    # Calculate cosine similarity between A and B
-    dot_ab = sum(x * y for x, y in zip(embedding_a, embedding_b))
-    norm_a = sum(x * x for x in embedding_a) ** 0.5
-    norm_b = sum(x * x for x in embedding_b) ** 0.5
-    similarity_ab = dot_ab / (norm_a * norm_b)
-     
-    # Calculate cosine similarity between A and C
-    dot_ac = sum(x * y for x, y in zip(embedding_a, embedding_c))
-    norm_c = sum(x * x for x in embedding_c) ** 0.5
-    similarity_ac = dot_ac / (norm_a * norm_c)
-     
-    print(f"Similarity between A and B: {similarity_ab}")
-    print(f"Similarity between A and C: {similarity_ac}")
-
 
 if __name__ == "__main__":
     main()
