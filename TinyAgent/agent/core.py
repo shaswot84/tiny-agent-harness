@@ -1,6 +1,6 @@
-from .llm import LLM
-from .trajectory import Trajectory
-from .memory import Memory
+from ..llm import LLM
+from ..trajectory import Trajectory
+from ..memory import Memory
 
 
 class TinyAgent:

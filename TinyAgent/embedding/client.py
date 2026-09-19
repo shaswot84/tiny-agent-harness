@@ -3,7 +3,7 @@ import os
 import urllib.request
 from dotenv import load_dotenv
 
-from .llm import PROVIDER_BASE_URLS
+from ..llm import PROVIDER_BASE_URLS
 
 load_dotenv()
 
