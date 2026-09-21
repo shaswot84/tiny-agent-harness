@@ -14,10 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Introduced `Tools` registry supporting tool registration (`add_tool`) with functions and descriptions.
   - Added support for specifying tools requiring human approval (`requires_approval`).
   - Added placeholder property for native tool-calling schemas (`schemas`).
+  - Added formatted string properties `descriptions` (markdown list of registered tools) and `prompt` (system prompt instructions for JSON tool calling).
   - Integrated `tools` parameter into `TinyAgent` constructor.
   - Added unit test coverage in `tests/test_tools.py`.
 
 ---
+
 
 
 ## [0.1.0] - 2026-09-19

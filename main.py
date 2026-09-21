@@ -2,6 +2,13 @@ from TinyAgent.llm import LLM
 from TinyAgent.agent import TinyAgent
 from TinyAgent.memory import Memory, TrimmingMemory, SummarizationMemory
 from TinyAgent.embedding import EmbeddingModel
+from TinyAgent.tools import Tools
+
+
+def multiply(a: str, b: str) -> str:
+    """Multiplies two numbers: multiply(a: str, b: str)"""
+    return str(float(a) * float(b))
+
 
 def main():
     # --- Example 1: Local Ollama ---
@@ -22,11 +29,21 @@ def main():
     # Default to local Ollama or custom base_url
     llm = LLM(model="gemma4:31b", provider="ollama_cloud")
 
+    # Register tool
+    tools = Tools()
+    tools.add_tool(
+        name="multiply",
+        func=multiply,
+        description="Multiplies two numbers: multiply(a: str, b: str)",
+    )
+
     agent = TinyAgent(
         llm=llm,
         memory=TrimmingMemory(),
-        record_trajectory=True
+        tools=tools,
+        record_trajectory=True,
     )
+
 
     print(f"Agent initialized with provider: {llm.base_url} (model: {llm.model})")
     # Quick single turn test (no heavy loops)

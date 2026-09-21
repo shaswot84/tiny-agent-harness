@@ -23,3 +23,26 @@ class Tools:
     def schemas(self) -> None:
         """Used only for native tool-calling."""
         return None
+
+    @property
+    def descriptions(self) -> str:
+        """Get descriptions of all registered tools."""
+        return "\n".join(
+            f"`{tool}`: {self.registry[tool]['description']}"
+            for tool in self.registry
+        )
+
+    @property
+    def prompt(self) -> str:
+        return f"""
+# Tools
+ 
+If needed, you can only use the following tools to assist you 
+in completing tasks:
+ 
+{self.descriptions}
+ 
+To use a tool, respond with JSON: 
+{{"tool": "name", "kwargs": {{"param": "value"}}}}
+"""
+

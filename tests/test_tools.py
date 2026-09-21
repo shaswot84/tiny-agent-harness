@@ -48,3 +48,37 @@ def test_agent_with_tools():
     )
     assert agent.tools is tools
     assert "dummy" in agent.tools.registry
+
+
+def test_multiply_tool_registration():
+    def multiply(a: str, b: str) -> str:
+        return str(float(a) * float(b))
+
+    tools = Tools()
+    tools.add_tool(
+        name="multiply",
+        func=multiply,
+        description="Multiplies two numbers: multiply(a: str, b: str)",
+    )
+
+    assert "multiply" in tools.registry
+    assert tools.registry["multiply"]["description"] == "Multiplies two numbers: multiply(a: str, b: str)"
+    assert tools.registry["multiply"]["function"]("3", "4") == "12.0"
+
+
+def test_tools_descriptions_and_prompt():
+    tools = Tools()
+    assert tools.descriptions == ""
+    assert "# Tools" in tools.prompt
+
+    tools.add_tool("tool_a", lambda: None, "Does action A")
+    tools.add_tool("tool_b", lambda: None, "Does action B")
+
+    assert tools.descriptions == "`tool_a`: Does action A\n`tool_b`: Does action B"
+    prompt = tools.prompt
+    assert "# Tools" in prompt
+    assert "`tool_a`: Does action A" in prompt
+    assert "`tool_b`: Does action B" in prompt
+    assert '{"tool": "name", "kwargs": {"param": "value"}}' in prompt
+
+
