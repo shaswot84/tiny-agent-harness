@@ -8,6 +8,7 @@ from .memory import (
     SummarizationMemory,
     RAGMemory,
 )
+from .tools import Tools
 
 __all__ = [
     "TinyAgent",
@@ -20,4 +21,6 @@ __all__ = [
     "TrimmingMemory",
     "SummarizationMemory",
     "RAGMemory",
+    "Tools",
 ]
+

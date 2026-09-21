@@ -1,16 +1,23 @@
 from ..llm import LLM
 from ..trajectory import Trajectory
 from ..memory import Memory
+from ..tools import Tools
 
 
 class TinyAgent:
     """A minimal, modular, and educational agent framework."""
 
-    def __init__(self, llm: LLM, memory: Memory, record_trajectory: bool = False):
+    def __init__(
+        self,
+        llm: LLM,
+        memory: Memory,
+        tools: Tools | None = None,
+        record_trajectory: bool = False,
+    ):
         self.llm = llm
         self.memory = memory
-        self.tools = None   
-        self.planner = None   
+        self.tools = tools
+        self.planner = None
 
         self.trajectory = Trajectory() if record_trajectory else None
 
