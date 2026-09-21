@@ -32,8 +32,10 @@ class TinyAgent:
     def _step(self) -> str:
         """Perform a single step."""
         # Generate response and add to memory
-        response = self.llm.generate(self.memory.get_messages())
+        tools = self.tools.schemas if self.tools else None
+        response = self.llm.generate(self.memory.get_messages(), tools=tools)
         self.memory.add("assistant", response.content)
+
         if self.trajectory:
             self.trajectory.add(response)
         return response.content

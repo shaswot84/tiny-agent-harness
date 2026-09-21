@@ -30,12 +30,39 @@ def main():
     llm = LLM(model="gemma4:31b", provider="ollama_cloud")
 
     # Register tool
+    tool_schema = {
+        "type": "function",
+        "function": {
+            "name": "multiply",
+            "description": "Multiply two numbers",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "a": {
+                        "type": "number",
+                        "description": "First number",
+                    },
+                    "b": {
+                        "type": "number",
+                        "description": "Second number",
+                    },
+                },
+                "required": [
+                    "a",
+                    "b",
+                ],
+            },
+        },
+    }
+
     tools = Tools()
     tools.add_tool(
         name="multiply",
         func=multiply,
         description="Multiplies two numbers: multiply(a: str, b: str)",
+        schema=tool_schema,
     )
+
 
     agent = TinyAgent(
         llm=llm,

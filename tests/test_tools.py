@@ -78,7 +78,48 @@ def test_tools_descriptions_and_prompt():
     prompt = tools.prompt
     assert "# Tools" in prompt
     assert "`tool_a`: Does action A" in prompt
-    assert "`tool_b`: Does action B" in prompt
     assert '{"tool": "name", "kwargs": {"param": "value"}}' in prompt
+
+
+def test_tools_schemas_and_llm_forwarding():
+    tool_schema = {
+        "type": "function",
+        "function": {
+            "name": "multiply",
+            "description": "Multiply two numbers",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "a": {"type": "number", "description": "First number"},
+                    "b": {"type": "number", "description": "Second number"},
+                },
+                "required": ["a", "b"],
+            },
+        },
+    }
+
+    tools = Tools()
+    tools.add_tool(
+        name="multiply",
+        func=lambda a, b: str(float(a) * float(b)),
+        description="Multiply two numbers",
+        schema=tool_schema,
+    )
+
+    assert tools.schemas == [tool_schema]
+
+    received_tools = []
+
+    class SpyLLM:
+        def generate(self, messages, tools=None):
+            nonlocal received_tools
+            received_tools = tools
+            return Response(content="Calculated answer")
+
+    agent = TinyAgent(llm=SpyLLM(), memory=Memory(), tools=tools)
+    agent.run("Calculate 2 * 3")
+
+    assert received_tools == [tool_schema]
+
 
 

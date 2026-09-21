@@ -9,20 +9,37 @@ class Tools:
         self.registry = {}
         self.requires_approval = list(requires_approval) if requires_approval is not None else []
 
-    def add_tool(self, name: str, func: Callable, description: str = "") -> None:
+    def add_tool(
+        self,
+        name: str,
+        func: Callable,
+        description: str = "",
+        schema: dict | None = None,
+    ) -> None:
         """Register a tool that the Agent can use.
 
         Arguments:
             name: The name of the tool.
             func: The function implementing the tool.
             description: A description of the tool.
+            schema: Optional OpenAI-compatible tool schema definition.
         """
-        self.registry[name] = {"function": func, "description": description}
+        self.registry[name] = {
+            "function": func,
+            "description": description,
+            "schema": schema,
+        }
 
     @property
-    def schemas(self) -> None:
+    def schemas(self) -> list[dict] | None:
         """Used only for native tool-calling."""
-        return None
+        schemas = [
+            tool["schema"]
+            for tool in self.registry.values()
+            if tool.get("schema") is not None
+        ]
+        return schemas if schemas else None
+
 
     @property
     def descriptions(self) -> str:

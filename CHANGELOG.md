@@ -13,12 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tool Registry (`TinyAgent.tools`)**:
   - Introduced `Tools` registry supporting tool registration (`add_tool`) with functions and descriptions.
   - Added support for specifying tools requiring human approval (`requires_approval`).
-  - Added placeholder property for native tool-calling schemas (`schemas`).
-  - Added formatted string properties `descriptions` (markdown list of registered tools) and `prompt` (system prompt instructions for JSON tool calling).
-  - Integrated `tools` parameter into `TinyAgent` constructor.
+  - Added support for OpenAI-compatible native tool-calling schemas via `schema` parameter in `add_tool` and `Tools.schemas` property.
+  - Formatted string properties `descriptions` (markdown list of registered tools) and `prompt` (system prompt instructions for JSON tool calling).
+  - Integrated `tools` parameter into `TinyAgent` constructor and automatic schema forwarding to `LLM.generate(..., tools=tools)`.
   - Added unit test coverage in `tests/test_tools.py`.
 
 ---
+
 
 
 
