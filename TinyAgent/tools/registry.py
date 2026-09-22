@@ -40,7 +40,11 @@ class Tools:
 
     @property
     def schemas(self) -> list[dict] | None:
-        """Used only for native tool-calling."""
+        """Collect registered tool schemas for native function calling.
+
+        Returns:
+            A list of OpenAI-style function calling dictionaries, or None if empty.
+        """
         schemas = [
             tool["schema"]
             for tool in self.registry.values()
@@ -50,7 +54,7 @@ class Tools:
 
     @property
     def descriptions(self) -> str:
-        """Get descriptions of all registered tools."""
+        """Format all registered tools into a human-readable list for prompting."""
         return "\n".join(
             f"`{tool}`: {self.registry[tool]['description']}"
             for tool in self.registry
@@ -58,6 +62,7 @@ class Tools:
 
     @property
     def prompt(self) -> str:
+        """Generate the system instructions explaining tool usage via JSON."""
         return f"""
 # Tools
  
@@ -71,14 +76,24 @@ To use a tool, respond with JSON:
 """
 
     def parse(self, response: Response) -> Response:
-        """Parse a JSON tool call from text."""
+        """Extract a JSON tool call from model generated text.
+
+        Looks for a JSON block containing "tool" key and populates `response.tool_call`.
+
+        Args:
+            response: Response object containing generated text in `content`.
+
+        Returns:
+            Response object updated with parsed `tool_call` dict if present.
+        """
         text = response.content
 
+        # Locate substring starting from first '{' and ending at last '}'
         if '"tool":' in text or '"tool:"' in text:
             start, end = text.find("{"), text.rfind("}") + 1
             tool_call = json.loads(text[start:end])
 
-            # Add the parsed tool call to the response
+            # Return updated Response with populated tool_call
             return Response(
                 content=response.content,
                 reasoning=response.reasoning,
@@ -88,21 +103,27 @@ To use a tool, respond with JSON:
         return response
 
     def execute(self, response: Response) -> Any:
-        """Run a registered tool.
+        """Execute the function corresponding to a parsed tool call.
 
-        Arguments:
-            response: Response object with tool_call.
+        Handles human-in-the-loop approval confirmation for sensitive tools
+        before triggering execution.
+
+        Args:
+            response: Response object containing `tool_call` with 'tool' and 'kwargs'.
+
+        Returns:
+            The output returned by the tool function, or an error/denial string.
         """
         tool_call = response.tool_call
         name, kwargs = tool_call["tool"], tool_call.get("kwargs", {})
 
-        # Human-in-the-loop: ask before running dangerous tools
+        # Human-in-the-loop: ask user for confirmation before dangerous actions
         if name in self.registry and name in self.requires_approval:
             approval = input(f"Allow {name}? [y/N] ").strip().lower()
             if approval not in ("y", "yes"):
                 return f"Tool '{name}' was denied by the user."
 
-        # Handle registered tools
+        # Dispatch call to the registered Python callable
         if name in self.registry:
             tool_func = self.registry[name]["function"]
             return tool_func(**kwargs)
@@ -110,10 +131,17 @@ To use a tool, respond with JSON:
         return f"Tool '{name}' not found."
 
     def observation(self, result: str, role: str | None = None) -> tuple[str, str]:
-        """Return the observation formatted for message history.
+        """Format an execution observation into a (role, content) message tuple.
 
-        For native tool-calling LLMs, the role is 'tool'.
-        For text-based/JSON-prompted LLMs, the role defaults to 'user'.
+        - For native tool calling: uses role 'tool' and raw result.
+        - For prompt-based tools: uses role 'user' and 'OBSERVATION: <result>'.
+
+        Args:
+            result: The stringified output from tool execution.
+            role: Optional role override ('user' or 'tool').
+
+        Returns:
+            A tuple of (message_role, message_content).
         """
         if role is not None:
             assigned_role = role
@@ -127,12 +155,25 @@ To use a tool, respond with JSON:
         return "user", f"OBSERVATION: {result}"
 
     def is_done(self, response: Response) -> bool:
-        """The `TinyAgent`'s stopping mechanism."""
+        """Check whether the agent has reached a completion state.
+
+        Stopping conditions:
+        1. The model output contains no tool call (regular conversational answer).
+        2. The model explicitly invoked the 'final_answer' tool, in which case
+           its arguments are unpacked into `response.content`.
+
+        Args:
+            response: Response object with generated text and optional tool_call.
+
+        Returns:
+            True if agent execution should stop, False if another tool step is required.
+        """
         if not response.tool_call:
             return True
         if response.tool_call["tool"] == "final_answer":
             response.content = response.tool_call.get("kwargs", "")
             return True
         return False
+
 
 
