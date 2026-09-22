@@ -29,3 +29,21 @@ def test_trajectory_recording():
     assert len(traj.runs[0]["steps"]) == 1
     assert traj.runs[0]["steps"][0].answer == "Paris"
     assert "📍 Run 1:" in str(traj)
+
+
+def test_trajectory_format_latest_run():
+    traj = Trajectory()
+    assert traj.format_latest_run() == ""
+
+    traj.initialize("Calculate 5 * 5")
+    traj.add(Response(content="25", reasoning="Multiplication"))
+
+    boxed = traj.format_latest_run(width=60)
+    assert "┌" in boxed and "┐" in boxed
+    assert "└" in boxed and "┘" in boxed
+    assert "Trajectory Run #1" in boxed
+    assert "Query: Calculate 5 * 5" in boxed
+    assert "▶ Step 1" in boxed
+    assert "Multiplication" in boxed
+    assert "25" in boxed
+

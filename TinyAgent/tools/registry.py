@@ -115,7 +115,31 @@ To use a tool, respond with JSON:
             The output returned by the tool function, or an error/denial string.
         """
         tool_call = response.tool_call
-        name, kwargs = tool_call["tool"], tool_call.get("kwargs", {})
+        if not tool_call:
+            return "No tool call to execute."
+
+        # Handle both OpenAI native format ({"function": {"name": ..., "arguments": ...}})
+        # and prompt-based format ({"tool": ..., "kwargs": ...})
+        if "function" in tool_call:
+            name = tool_call["function"].get("name", "")
+            raw_args = tool_call["function"].get("arguments", {})
+            if isinstance(raw_args, str):
+                try:
+                    kwargs = json.loads(raw_args) if raw_args.strip() else {}
+                except Exception:
+                    kwargs = {}
+            elif isinstance(raw_args, dict):
+                kwargs = raw_args
+            else:
+                kwargs = {}
+        else:
+            name = tool_call.get("tool", "")
+            kwargs = tool_call.get("kwargs", {})
+            if isinstance(kwargs, str):
+                try:
+                    kwargs = json.loads(kwargs)
+                except Exception:
+                    pass
 
         # Human-in-the-loop: ask user for confirmation before dangerous actions
         if name in self.registry and name in self.requires_approval:
@@ -129,6 +153,7 @@ To use a tool, respond with JSON:
             return tool_func(**kwargs)
 
         return f"Tool '{name}' not found."
+
 
     def observation(self, result: str, role: str | None = None) -> tuple[str, str]:
         """Format an execution observation into a (role, content) message tuple.
@@ -170,9 +195,28 @@ To use a tool, respond with JSON:
         """
         if not response.tool_call:
             return True
-        if response.tool_call["tool"] == "final_answer":
-            response.content = response.tool_call.get("kwargs", "")
+
+        tool_call = response.tool_call
+        if "function" in tool_call:
+            tool_name = tool_call["function"].get("name", "")
+            raw_args = tool_call["function"].get("arguments", "")
+        else:
+            tool_name = tool_call.get("tool", "")
+            raw_args = tool_call.get("kwargs", "")
+
+        if tool_name == "final_answer":
+            if isinstance(raw_args, dict) and "answer" in raw_args:
+                response.content = raw_args["answer"]
+            elif isinstance(raw_args, str):
+                try:
+                    parsed = json.loads(raw_args)
+                    response.content = parsed.get("answer", raw_args) if isinstance(parsed, dict) else str(parsed)
+                except Exception:
+                    response.content = raw_args
+            else:
+                response.content = str(raw_args)
             return True
+
         return False
 
 

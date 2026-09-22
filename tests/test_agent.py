@@ -51,3 +51,55 @@ def test_agent_tools_system_prompt():
     assert messages[1]["role"] == "user"
     assert messages[2]["role"] == "assistant"
 
+
+def test_agent_tool_execution_loop():
+    from TinyAgent.tools import Tools
+
+    tools = Tools()
+    tools.add_tool("multiply", lambda a, b: str(float(a) * float(b)), "Multiply two numbers")
+
+    class ToolUsingLLM:
+        def __init__(self):
+            self.turn = 0
+
+        def generate(self, messages, tools=None):
+            self.turn += 1
+            if self.turn == 1:
+                # First turn: returns tool call in OpenAI native format
+                return Response(
+                    content="",
+                    tool_call={
+                        "id": "call_123",
+                        "type": "function",
+                        "function": {
+                            "name": "multiply",
+                            "arguments": '{"a": 5, "b": 6}',
+                        },
+                    },
+                )
+            else:
+                # Second turn: after seeing observation "30.0", returns final answer
+                return Response(content="5 times 6 is 30.0")
+
+    agent = TinyAgent(
+        llm=ToolUsingLLM(),
+        memory=Memory(),
+        tools=tools,
+        record_trajectory=True,
+    )
+    result = agent.run("What is 5 times 6?")
+    assert result == "5 times 6 is 30.0"
+
+    messages = agent.memory.get_messages()
+    # Expect: system prompt, user query, assistant tool_call turn, observation turn, final assistant turn
+    assert any(msg.get("role") == "system" for msg in messages)
+    assert any(msg.get("tool_calls") for msg in messages)
+    assert any("30.0" in str(msg.get("content")) for msg in messages)
+
+    # Check trajectory has both the tool call step and final answer
+    assert len(agent.trajectory.runs) == 1
+    assert len(agent.trajectory.runs[0]["steps"]) == 2
+    assert agent.trajectory.runs[0]["steps"][0].observation == "30.0"
+    assert agent.trajectory.runs[0]["steps"][1].answer == "5 times 6 is 30.0"
+
+

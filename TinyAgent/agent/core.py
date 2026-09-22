@@ -1,7 +1,8 @@
-from ..llm import LLM
+from ..llm import LLM, Response
 from ..trajectory import Trajectory
 from ..memory import Memory
 from ..tools import Tools
+
 
 
 class TinyAgent:
@@ -67,33 +68,74 @@ class TinyAgent:
         if self.trajectory:
             self.trajectory.initialize(task)
 
-        return self._step()
+        # Execute agent steps until a final answer is produced
+        max_steps = 10
+        for _ in range(max_steps):
+            response = self._step()
+            if not self.tools:
+                return response.content
+            if self.tools.is_done(response):
+                return response.content
 
-    def _step(self) -> str:
+        return response.content
+
+    def _step(self) -> Response:
         """Perform a single step of the agent execution.
 
         1. Fetches available native tool schemas (if configured).
         2. Queries the LLM with all past messages in memory.
-        3. Records the assistant's reply into conversation memory.
-        4. Logs the step response to trajectory (if enabled).
+        3. Parses prompt-based tool calls from text if native calling is not used.
+        4. If a tool call is present:
+           - Executes the tool.
+           - Records the step with observation into trajectory.
+           - Appends assistant action and tool observation to memory.
+        5. If no tool call is present:
+           - Records the final answer into memory and trajectory.
 
         Returns:
-            The raw text content produced by the assistant.
+            The Response object produced for this step.
         """
         # Pass native function schemas to the LLM if available
-        tools = self.tools.schemas if self.tools else None
+        schemas = self.tools.schemas if self.tools else None
 
         # Request completion with full conversation history
-        response = self.llm.generate(self.memory.get_messages(), tools=tools)
+        response = self.llm.generate(self.memory.get_messages(), tools=schemas)
 
-        # Append assistant's answer to memory history
-        self.memory.add("assistant", response.content)
+        # Parse text-based tool calls if native calling wasn't used or produced no tool_call
+        if self.tools and not response.tool_call and not self.tools.native:
+            response = self.tools.parse(response)
 
-        # Record step in trajectory for observability
-        if self.trajectory:
-            self.trajectory.add(response)
+        # If a tool call is present, execute it and feed observation back
+        if self.tools and response.tool_call:
+            # Check if this tool call is a stopping final_answer
+            if self.tools.is_done(response):
+                self.memory.add("assistant", response.content)
+                if self.trajectory:
+                    self.trajectory.add(response)
+                return response
 
-        return response.content
+            observation = self.tools.execute(response)
+            obs_str = str(observation)
+
+            # Record step with action and observation into trajectory
+            if self.trajectory:
+                self.trajectory.add(response, observation=obs_str)
+
+            # Record assistant turn (with tool call info) and observation turn into memory
+            self.memory.add(
+                "assistant",
+                response.content,
+                tool_call=response.tool_call,
+            )
+            obs_role, obs_content = self.tools.observation(obs_str)
+            self.memory.add(obs_role, obs_content)
+        else:
+            # Final text response without tool calls
+            self.memory.add("assistant", response.content)
+            if self.trajectory:
+                self.trajectory.add(response)
+
+        return response
 
     def _execute_action(self, action: str) -> str | None:
         """Execute a tool action.
@@ -106,3 +148,4 @@ class TinyAgent:
         """
         # Placeholder - will be implemented in later chapters
         return f"Executed action: {action}"
+

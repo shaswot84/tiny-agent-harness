@@ -91,6 +91,12 @@ def main():
         result = agent.run(user_input)
         print(f"Agent: {result}\n")
 
+        # Display trajectory box if recording is enabled
+        if agent.trajectory:
+            print(agent.trajectory.format_latest_run())
+            print()
+
+
 
 if __name__ == "__main__":
     main()
