@@ -66,16 +66,30 @@ def main():
 
     agent = TinyAgent(
         llm=llm,
-        memory=TrimmingMemory(),
+        memory=SummarizationMemory(llm=llm),
         tools=tools,
         record_trajectory=True,
     )
 
-
     print(f"Agent initialized with provider: {llm.base_url} (model: {llm.model})")
-    # Quick single turn test (no heavy loops)
-    result = agent.run("Hello! Introduce yourself briefly.")
-    print("Agent:", result)
+    print("Type your message below. Type '/exit' to quit.\n")
+
+    while True:
+        try:
+            user_input = input("You: ").strip()
+        except (KeyboardInterrupt, EOFError):
+            print("\nExiting...")
+            break
+
+        if not user_input:
+            continue
+
+        if user_input.lower() == "/exit":
+            print("Goodbye!")
+            break
+
+        result = agent.run(user_input)
+        print(f"Agent: {result}\n")
 
 
 if __name__ == "__main__":
