@@ -164,10 +164,22 @@ def test_tools_execute(monkeypatch):
 
 
 def test_tools_observation():
+    # Prompt-based LLM (default)
     tools = Tools()
     role, message = tools.observation("42")
     assert role == "user"
     assert message == "OBSERVATION: 42"
+
+    # Native tool-calling LLM
+    native_tools = Tools(native=True)
+    n_role, n_message = native_tools.observation("42")
+    assert n_role == "tool"
+    assert n_message == "42"
+
+    # Explicit role override
+    custom_role, custom_msg = tools.observation("42", role="tool")
+    assert custom_role == "tool"
+    assert custom_msg == "42"
 
 
 def test_tools_is_done():

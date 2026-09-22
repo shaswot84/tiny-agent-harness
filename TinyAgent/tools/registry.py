@@ -7,10 +7,15 @@ from TinyAgent.llm import Response
 class Tools:
     """Tool registry for the Agent."""
 
-    def __init__(self, requires_approval: list[str] | None = None):
+    def __init__(
+        self,
+        requires_approval: list[str] | None = None,
+        native: bool = False,
+    ):
         """Initialize and select tools that require approval before execution."""
         self.registry = {}
         self.requires_approval = list(requires_approval) if requires_approval is not None else []
+        self.native = native
 
     def add_tool(
         self,
@@ -104,8 +109,21 @@ To use a tool, respond with JSON:
 
         return f"Tool '{name}' not found."
 
-    def observation(self, result: str) -> tuple[str, str]:
-        """Return the observation as a user."""
+    def observation(self, result: str, role: str | None = None) -> tuple[str, str]:
+        """Return the observation formatted for message history.
+
+        For native tool-calling LLMs, the role is 'tool'.
+        For text-based/JSON-prompted LLMs, the role defaults to 'user'.
+        """
+        if role is not None:
+            assigned_role = role
+        elif self.native:
+            assigned_role = "tool"
+        else:
+            assigned_role = "user"
+
+        if assigned_role == "tool":
+            return "tool", str(result)
         return "user", f"OBSERVATION: {result}"
 
     def is_done(self, response: Response) -> bool:
