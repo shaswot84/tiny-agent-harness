@@ -50,6 +50,33 @@ def test_summarization_memory():
     assert messages[0]["content"] == "Summary of user facts."
 
 
+def test_summarization_memory_preserves_tools_and_instructions():
+    class MockLLM:
+        def generate(self, messages):
+            return Response(content="User likes Alice.")
+
+    mem = SummarizationMemory(llm=MockLLM())
+    mem.add("system", "[Instructions]\nYou are a helpful assistant.\n\n# Tools\n`multiply`: Multiplies numbers")
+    mem.add("user", "My name is Alice.")
+    mem.add("assistant", "Hello Alice!")
+
+    messages = mem.get_messages()
+    assert len(messages) == 1
+    assert messages[0]["role"] == "system"
+    content = messages[0]["content"]
+
+    # Preserves Instructions and Tools
+    assert "[Instructions]" in content
+    assert "You are a helpful assistant." in content
+    assert "# Tools" in content
+    assert "`multiply`: Multiplies numbers" in content
+
+    # Appends and updates Conversation Summary section
+    assert "[Conversation Summary]" in content
+    assert "User likes Alice." in content
+
+
+
 def test_rag_memory():
     # Deterministic mock embedder mapping keywords to orthogonal vectors
     class MockEmbeddingModel:

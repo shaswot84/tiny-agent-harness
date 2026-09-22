@@ -35,20 +35,55 @@ class SummarizationMemory(Memory):
 
         # After each completed turn, update the running summary
         if role == "assistant":
-            summary = ""
-            conversation = ""
+            # Extract existing system sections (instructions, tools, previous summary)
+            instructions = []
+            tools_section = []
+            previous_summary = ""
+
             for message in self.messages:
                 if message["role"] == "system":
-                    summary = message["content"]
-                else:
+                    sys_content = message["content"]
+                    if "[Conversation Summary]" in sys_content:
+                        # Split by section headers if formatted previously
+                        parts = sys_content.split("[Conversation Summary]")
+                        prefix = parts[0].strip()
+                        previous_summary = parts[1].strip() if len(parts) > 1 else ""
+                        if prefix:
+                            instructions.append(prefix)
+                    elif "# Tools" in sys_content or "[Tools]" in sys_content:
+                        tools_section.append(sys_content)
+                    else:
+                        instructions.append(sys_content)
+
+            conversation = ""
+            for message in self.messages:
+                if message["role"] != "system":
                     conversation += f"{message['role']}: {message['content']}\n"
 
             prompt = f"""Update the summary with the new conversation.
 
-Summary: {summary}
+Summary: {previous_summary}
 
 Conversation:
 {conversation}
 Output the updated summary only."""
             response = self.llm.generate([{"role": "user", "content": prompt}])
-            self.messages = [{"role": "system", "content": response.content}]
+            updated_summary = response.content.strip()
+
+            # Compose sections cleanly
+            system_parts = []
+            if instructions:
+                system_parts.append("\n\n".join(instructions).strip())
+            if tools_section:
+                system_parts.append("\n\n".join(tools_section).strip())
+
+            if system_parts:
+                full_system_prompt = (
+                    "\n\n".join(system_parts)
+                    + f"\n\n[Conversation Summary]\n{updated_summary}"
+                )
+            else:
+                full_system_prompt = updated_summary
+
+            self.messages = [{"role": "system", "content": full_system_prompt}]
+
