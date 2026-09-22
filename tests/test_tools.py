@@ -161,3 +161,34 @@ def test_tools_execute(monkeypatch):
     # Human-in-the-loop: denied
     monkeypatch.setattr("builtins.input", lambda prompt: "n")
     assert tools.execute(dangerous_resp) == "Tool 'delete_db' was denied by the user."
+
+
+def test_tools_observation():
+    tools = Tools()
+    role, message = tools.observation("42")
+    assert role == "user"
+    assert message == "OBSERVATION: 42"
+
+
+def test_tools_is_done():
+    tools = Tools()
+
+    # No tool call -> is done
+    no_tool_resp = Response(content="Final thought")
+    assert tools.is_done(no_tool_resp) is True
+
+    # Tool call with final_answer -> is done and updates content
+    final_resp = Response(
+        content='{"tool": "final_answer", "kwargs": "The result is 42"}',
+        tool_call={"tool": "final_answer", "kwargs": "The result is 42"},
+    )
+    assert tools.is_done(final_resp) is True
+    assert final_resp.content == "The result is 42"
+
+    # Regular tool call -> not done
+    regular_resp = Response(
+        content='{"tool": "calculator", "kwargs": {"a": 1}}',
+        tool_call={"tool": "calculator", "kwargs": {"a": 1}},
+    )
+    assert tools.is_done(regular_resp) is False
+

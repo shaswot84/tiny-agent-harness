@@ -104,4 +104,17 @@ To use a tool, respond with JSON:
 
         return f"Tool '{name}' not found."
 
+    def observation(self, result: str) -> tuple[str, str]:
+        """Return the observation as a user."""
+        return "user", f"OBSERVATION: {result}"
+
+    def is_done(self, response: Response) -> bool:
+        """The `TinyAgent`'s stopping mechanism."""
+        if not response.tool_call:
+            return True
+        if response.tool_call["tool"] == "final_answer":
+            response.content = response.tool_call.get("kwargs", "")
+            return True
+        return False
+
 
