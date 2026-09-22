@@ -1,3 +1,4 @@
-from .registry import Tools
+from .registry import Tools, tool_to_schema
 
-__all__ = ["Tools"]
+__all__ = ["Tools", "tool_to_schema"]
+

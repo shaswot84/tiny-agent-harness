@@ -1,7 +1,46 @@
+import inspect
 import json
 from typing import Any, Callable
 
 from TinyAgent.llm import Response
+
+# Convert specific types to string descriptions
+TYPE_MAP = {
+    str: "string",
+    int: "integer",
+    float: "number",
+    bool: "boolean",
+    list: "array",
+    dict: "object",
+}
+
+
+def tool_to_schema(function: Callable) -> dict:
+    """Convert a Python function to an OpenAI-style tool schema."""
+    signature = inspect.signature(function)
+
+    # Extract metadata
+    properties, required = {}, []
+    for name, parameter in signature.parameters.items():
+        properties[name] = {"type": TYPE_MAP.get(parameter.annotation, "string")}
+        if parameter.default is inspect.Parameter.empty:
+            required.append(name)
+
+    # Fill schema
+    schema = {
+        "type": "function",
+        "function": {
+            "name": function.__name__,
+            "description": inspect.getdoc(function) or "",
+            "parameters": {
+                "type": "object",
+                "properties": properties,
+                "required": required,
+            },
+        },
+    }
+
+    return schema
 
 
 class Tools:
@@ -29,14 +68,19 @@ class Tools:
         Arguments:
             name: The name of the tool.
             func: The function implementing the tool.
-            description: A description of the tool.
-            schema: Optional OpenAI-compatible tool schema definition.
+            description: A description of the tool. If omitted, uses func's docstring.
+            schema: Optional OpenAI-compatible tool schema definition. If omitted,
+                    it is automatically inferred from func's signature and type annotations.
         """
+        resolved_desc = description or (inspect.getdoc(func) or "")
+        resolved_schema = schema if schema is not None else tool_to_schema(func)
+
         self.registry[name] = {
             "function": func,
-            "description": description,
-            "schema": schema,
+            "description": resolved_desc,
+            "schema": resolved_schema,
         }
+
 
     @property
     def schemas(self) -> list[dict] | None:

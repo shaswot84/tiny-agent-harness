@@ -31,6 +31,31 @@ def test_tools_add_tool():
     assert tool_entry["description"] == "Adds two numbers together"
     assert tool_entry["function"] == add
     assert tool_entry["function"](2, 3) == 5
+    # Auto-inferred schema
+    assert tool_entry["schema"]["function"]["name"] == "add"
+    assert tool_entry["schema"]["function"]["parameters"]["properties"]["a"]["type"] == "integer"
+    assert tool_entry["schema"]["function"]["parameters"]["properties"]["b"]["type"] == "integer"
+    assert tool_entry["schema"]["function"]["parameters"]["required"] == ["a", "b"]
+
+
+def test_tool_to_schema():
+    from TinyAgent.tools import tool_to_schema
+
+    def search(query: str, limit: int = 5, verbose: bool = False) -> list:
+        """Search the web for results."""
+        return []
+
+    schema = tool_to_schema(search)
+    assert schema["type"] == "function"
+    assert schema["function"]["name"] == "search"
+    assert schema["function"]["description"] == "Search the web for results."
+    params = schema["function"]["parameters"]
+    assert params["type"] == "object"
+    assert params["properties"]["query"]["type"] == "string"
+    assert params["properties"]["limit"]["type"] == "integer"
+    assert params["properties"]["verbose"]["type"] == "boolean"
+    assert params["required"] == ["query"]
+
 
 
 def test_agent_with_tools():
