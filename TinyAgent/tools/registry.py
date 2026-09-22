@@ -1,4 +1,7 @@
-from typing import Callable
+import json
+from typing import Any, Callable
+
+from TinyAgent.llm import Response
 
 
 class Tools:
@@ -40,7 +43,6 @@ class Tools:
         ]
         return schemas if schemas else None
 
-
     @property
     def descriptions(self) -> str:
         """Get descriptions of all registered tools."""
@@ -62,4 +64,44 @@ in completing tasks:
 To use a tool, respond with JSON: 
 {{"tool": "name", "kwargs": {{"param": "value"}}}}
 """
+
+    def parse(self, response: Response) -> Response:
+        """Parse a JSON tool call from text."""
+        text = response.content
+
+        if '"tool":' in text or '"tool:"' in text:
+            start, end = text.find("{"), text.rfind("}") + 1
+            tool_call = json.loads(text[start:end])
+
+            # Add the parsed tool call to the response
+            return Response(
+                content=response.content,
+                reasoning=response.reasoning,
+                tool_call=tool_call,
+            )
+
+        return response
+
+    def execute(self, response: Response) -> Any:
+        """Run a registered tool.
+
+        Arguments:
+            response: Response object with tool_call.
+        """
+        tool_call = response.tool_call
+        name, kwargs = tool_call["tool"], tool_call.get("kwargs", {})
+
+        # Human-in-the-loop: ask before running dangerous tools
+        if name in self.registry and name in self.requires_approval:
+            approval = input(f"Allow {name}? [y/N] ").strip().lower()
+            if approval not in ("y", "yes"):
+                return f"Tool '{name}' was denied by the user."
+
+        # Handle registered tools
+        if name in self.registry:
+            tool_func = self.registry[name]["function"]
+            return tool_func(**kwargs)
+
+        return f"Tool '{name}' not found."
+
 

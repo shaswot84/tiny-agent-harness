@@ -122,4 +122,42 @@ def test_tools_schemas_and_llm_forwarding():
     assert received_tools == [tool_schema]
 
 
+def test_tools_parse():
+    tools = Tools()
 
+    # Response with tool call in text
+    resp = Response(
+        content='I will calculate this: {"tool": "add", "kwargs": {"a": 2, "b": 3}}',
+        reasoning="Need to add numbers",
+    )
+    parsed = tools.parse(resp)
+    assert parsed.tool_call == {"tool": "add", "kwargs": {"a": 2, "b": 3}}
+    assert parsed.content == resp.content
+    assert parsed.reasoning == "Need to add numbers"
+
+    # Response without tool call
+    plain_resp = Response(content="Just a regular message")
+    assert tools.parse(plain_resp).tool_call is None
+
+
+def test_tools_execute(monkeypatch):
+    tools = Tools(requires_approval=["delete_db"])
+    tools.add_tool("add", lambda a, b: a + b, "Add")
+    tools.add_tool("delete_db", lambda: "Database dropped", "Delete DB")
+
+    # Normal execution
+    resp = Response(tool_call={"tool": "add", "kwargs": {"a": 5, "b": 10}})
+    assert tools.execute(resp) == 15
+
+    # Unknown tool
+    unknown_resp = Response(tool_call={"tool": "nonexistent"})
+    assert tools.execute(unknown_resp) == "Tool 'nonexistent' not found."
+
+    # Human-in-the-loop: approved
+    dangerous_resp = Response(tool_call={"tool": "delete_db"})
+    monkeypatch.setattr("builtins.input", lambda prompt: "y")
+    assert tools.execute(dangerous_resp) == "Database dropped"
+
+    # Human-in-the-loop: denied
+    monkeypatch.setattr("builtins.input", lambda prompt: "n")
+    assert tools.execute(dangerous_resp) == "Tool 'delete_db' was denied by the user."
