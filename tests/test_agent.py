@@ -32,3 +32,22 @@ def test_agent_disable_trajectory():
 
     answer = agent.run("Test task")
     assert answer == "I am a tiny agent response."
+
+
+def test_agent_tools_system_prompt():
+    from TinyAgent.tools import Tools
+
+    tools = Tools()
+    tools.add_tool("get_weather", lambda city: "Sunny", "Get the weather for a city")
+
+    agent = TinyAgent(llm=MockLLM(), memory=Memory(), tools=tools)
+    agent.run("What is the weather?")
+
+    messages = agent.memory.get_messages()
+    assert len(messages) == 3
+    assert messages[0]["role"] == "system"
+    assert "# Tools" in messages[0]["content"]
+    assert "get_weather" in messages[0]["content"]
+    assert messages[1]["role"] == "user"
+    assert messages[2]["role"] == "assistant"
+

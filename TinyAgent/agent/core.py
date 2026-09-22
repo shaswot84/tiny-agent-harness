@@ -23,6 +23,13 @@ class TinyAgent:
 
     def run(self, task: str) -> str:
         """Run the agent on a task."""
+        if self.tools and not self.tools.native and self.tools.descriptions:
+            # Only add the tools system prompt if it hasn't already been added
+            existing_messages = self.memory.get_messages()
+            has_system = any(msg.get("role") == "system" for msg in existing_messages)
+            if not has_system:
+                self.memory.add("system", self.tools.prompt)
+
         self.memory.add("user", task)
         if self.trajectory:
             self.trajectory.initialize(task)
