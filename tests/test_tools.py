@@ -229,3 +229,64 @@ def test_tools_is_done():
     )
     assert tools.is_done(regular_resp) is False
 
+
+def test_native_tools():
+    from TinyAgent.tools import NativeTools
+
+    native_tools = NativeTools()
+    def add(a: int, b: int) -> int:
+        """Add two ints."""
+        return a + b
+
+    native_tools.add_tool("add", add)
+
+    # schemas & prompt
+    assert native_tools.prompt == ""
+    assert len(native_tools.schemas) == 1
+    assert native_tools.schemas[0]["function"]["name"] == "add"
+
+    # parse
+    raw_resp = Response(
+        content="",
+        tool_call={
+            "id": "1",
+            "type": "function",
+            "function": {
+                "name": "add",
+                "arguments": '{"a": 10, "b": 20}',
+            },
+        },
+    )
+    parsed = native_tools.parse(raw_resp)
+    assert parsed.tool_call == {"tool": "add", "kwargs": {"a": 10, "b": 20}}
+
+    # observation
+    role, obs = native_tools.observation("30")
+    assert role == "tool"
+    assert obs == "30"
+
+    # is_done
+    assert native_tools.is_done(Response(content="Done without tool")) is True
+    assert native_tools.is_done(raw_resp) is False
+
+
+def test_toolbox():
+    from TinyAgent.tools import toolbox
+
+    # Math helpers
+    assert toolbox.add(2, 3) == "5.0"
+    assert toolbox.multiply(4, 5) == "20.0"
+    assert toolbox.subtract(10, 4) == "6.0"
+    assert toolbox.divide(20, 4) == "5.0"
+    assert "Error" in toolbox.divide(10, 0)
+    assert toolbox.power(2, 3) == "8.0"
+
+    # Control helper
+    assert toolbox.final_answer("Done!") == "Done!"
+
+    # Command execution
+    out = toolbox.execute_command("echo 'hello toolbox'")
+    assert "hello toolbox" in out
+
+
+

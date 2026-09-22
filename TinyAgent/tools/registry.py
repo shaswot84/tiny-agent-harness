@@ -264,4 +264,54 @@ To use a tool, respond with JSON:
         return False
 
 
+class NativeTools(Tools):
+    """Tool registry using native function calling."""
+
+    def __init__(self, requires_approval: list[str] | None = None):
+        super().__init__(requires_approval=requires_approval, native=True)
+
+    @property
+    def schemas(self) -> list[dict]:
+        """Return tool functions for native function calling."""
+        return [
+            tool_to_schema(tool["function"]) for tool in self.registry.values()
+        ]
+
+    @property
+    def prompt(self) -> str:
+        """Empty because we don't need a prompt for native tool calling."""
+        return ""
+
+    def parse(self, response: Response) -> Response:
+        """Parse a tool call."""
+        # If there's no tool call, return the response as is
+        if not response.tool_call:
+            return response
+
+        # Extract the tool name and arguments from the tool call
+        args = response.tool_call["function"]["arguments"]
+        if isinstance(args, str):
+            args = json.loads(args)
+        tool_call = {
+            "tool": response.tool_call["function"]["name"],
+            "kwargs": args,
+        }
+
+        # Add the parsed tool call to the response
+        return Response(
+            content=response.content,
+            reasoning=response.reasoning,
+            tool_call=tool_call,
+        )
+
+    def observation(self, result: str) -> tuple[str, str]:
+        """Native tool results use the 'tool' role."""
+        return "tool", str(result)
+
+    def is_done(self, response: Response) -> bool:
+        """No tool call means the `TinyAgent` is done."""
+        return not response.tool_call
+
+
+
 

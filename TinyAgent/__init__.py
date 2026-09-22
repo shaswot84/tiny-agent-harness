@@ -8,7 +8,7 @@ from .memory import (
     SummarizationMemory,
     RAGMemory,
 )
-from .tools import Tools, tool_to_schema
+from .tools import Tools, NativeTools, tool_to_schema, toolbox
 
 __all__ = [
     "TinyAgent",
@@ -22,7 +22,11 @@ __all__ = [
     "SummarizationMemory",
     "RAGMemory",
     "Tools",
+    "NativeTools",
     "tool_to_schema",
+    "toolbox",
 ]
+
+
 
 

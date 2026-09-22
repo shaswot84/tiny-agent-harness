@@ -10,19 +10,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Tool Registry (`TinyAgent.tools`)**:
-  - Introduced `Tools` registry supporting tool registration (`add_tool`) with functions and descriptions.
-  - Added support for specifying tools requiring human approval (`requires_approval`).
-  - Added support for OpenAI-compatible native tool-calling schemas via `schema` parameter in `add_tool` and `Tools.schemas` property.
-  - Formatted string properties `descriptions` (markdown list of registered tools) and `prompt` (system prompt instructions for JSON tool calling).
-  - Integrated `tools` parameter into `TinyAgent` constructor and automatic schema forwarding to `LLM.generate(..., tools=tools)`.
-  - Added unit test coverage in `tests/test_tools.py`.
+- **Tool Parsing, Execution & Native Support (`TinyAgent.tools`)**:
+  - Added `Tools.parse()` to extract JSON tool calls from free-form model text.
+  - Added `Tools.execute()` supporting both prompt-based (`tool`, `kwargs`) and OpenAI-compatible native (`function`, `arguments`) tool calls, with human-in-the-loop approval confirmation.
+  - Added `Tools.observation()` supporting role formatting (`"tool"` for native tool calls, `"user"` for prompt-based tool calls).
+  - Added `Tools.is_done()` stopping mechanism supporting `final_answer` unpacking and natural completions.
+  - Added `NativeTools(Tools)` subclass for models supporting native function calling with automatic schema mapping, zero system prompt stuffing, and `role: "tool"` observations.
+  - Added `tool_to_schema()` utility using Python's `inspect` to automatically convert Python functions, docstrings, and type annotations into OpenAI-compatible JSON tool schemas.
+  - Added `TinyAgent.tools.toolbox` containing standard built-in functions: `add`, `multiply`, `subtract`, `divide`, `power`, `execute_command`, and `final_answer`.
+  - Added automatic tool schema generation fallback in `Tools.add_tool(..., schema=None)`.
+  - Exported `NativeTools`, `tool_to_schema`, and `toolbox` in `TinyAgent` root package.
 
----
+- **Iterative Tool Execution Loop (`TinyAgent.agent`)**:
+  - Implemented multi-step loop in `TinyAgent.run()` / `_step()` to execute tools and feed observation responses back to the LLM until `is_done()` or safety step limit is reached.
+  - Added automatic tools system prompt injection for prompt-based models when tools are registered.
 
+- **Section-Aware Summarization Memory (`TinyAgent.memory`)**:
+  - Enhanced `SummarizationMemory` to separate and preserve system instructions and `[Tools]` definitions while updating only the `[Conversation Summary]` section.
 
+- **CLI Trajectory Box Formatting (`TinyAgent.trajectory`)**:
+  - Added `Trajectory.format_latest_run()` rendering clean Unicode bordered boxes (`┌─┐`, `│`, `└─┘`) with accurate display widths for terminal emojis and multi-line word wrapping.
+  - Added interactive CLI chat loop in `main.py` with `/exit` command and automatic trajectory box display after each turn.
 
-
+- **Comprehensive Test Coverage**:
+  - Added test cases in `tests/test_tools.py` for `parse`, `execute`, `observation`, `is_done`, `tool_to_schema`, `NativeTools`, and `toolbox`.
+  - Added `test_agent_tool_execution_loop` and `test_agent_tools_system_prompt` in `tests/test_agent.py`.
+  - Added `test_summarization_memory_preserves_tools_and_instructions` in `tests/test_memory.py`.
+  - Added `test_trajectory_format_latest_run` in `tests/test_trajectory.py`.
 ## [0.1.0] - 2026-09-19
 
 ### Added
