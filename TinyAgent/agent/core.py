@@ -26,9 +26,12 @@ class TinyAgent:
         self.trajectory = Trajectory() if record_trajectory else None
 
         # Build system prompt with all components
-        if self.planner or self.tools:
+        # Note: If LLM native thinking mode is enabled (llm.think=True), we do not inject
+        # prompt-based ReAct instructions to allow native model reasoning.
+        use_prompt_planner = self.planner and not getattr(self.llm, "think", False)
+        if use_prompt_planner or self.tools:
             system_prompt = "You are a helpful assistant.\n\n"
-            if self.planner:
+            if use_prompt_planner:
                 system_prompt += self.planner.prompt
             if self.tools:
                 system_prompt += self.tools.prompt
@@ -61,7 +64,8 @@ class TinyAgent:
         )
 
         # Tool parsing
-        if self.planner:
+        # When native thinking is enabled, bypass ReAct regex parsing to preserve native reasoning
+        if self.planner and not getattr(self.llm, "think", False):
             response = self.planner.parse(response)
         if self.tools:
             response = self.tools.parse(response)

@@ -135,6 +135,7 @@ def get_or_create_agent(
     model: str,
     custom_base_url: str,
     api_key: str,
+    think: bool,
     tool_mode: str,
     selected_tools: list[str],
     memory_type: str,
@@ -143,7 +144,7 @@ def get_or_create_agent(
     max_steps: int,
 ) -> TinyAgent:
     """Create or return cached TinyAgent instance."""
-    config_key = f"{provider}:{model}:{custom_base_url}:{tool_mode}:{selected_tools}:{memory_type}:{trim_k}:{use_react}:{max_steps}"
+    config_key = f"{provider}:{model}:{custom_base_url}:{think}:{tool_mode}:{selected_tools}:{memory_type}:{trim_k}:{use_react}:{max_steps}"
     
     if st.session_state.agent is not None and st.session_state.agent_config_hash == config_key:
         return st.session_state.agent
@@ -156,6 +157,7 @@ def get_or_create_agent(
         provider=provider if not base_url else None,
         base_url=base_url,
         api_key=key,
+        think=think,
     )
 
     tools = build_tools(tool_mode, selected_tools)
@@ -188,22 +190,39 @@ with st.sidebar:
             index=0,
         )
         model = st.text_input("Model Name", value="gemma4:31b" if provider == "ollama_cloud" else "llama-3.3-70b-versatile")
+        think = st.checkbox(
+            "🧠 Native Think / Reasoning Mode",
+            value=False,
+            help="Enable native model reasoning (DeepSeek-R1, QwQ, etc.). Bypasses text ReAct prompt templates and preserves true chain-of-thought tokens."
+        )
         custom_base_url = st.text_input("Custom Base URL (optional)", placeholder="http://localhost:11434/v1")
         api_key = st.text_input("API Key (optional, falls back to env)", type="password")
 
     with st.expander("🛠️ Tools & Mode", expanded=True):
-        tool_mode = st.radio("Tool Execution Mode", ["Prompt-based (JSON / ReAct)", "Native Function Calling"], index=0)
+        # Recommend Native Function Calling when think mode is active
+        default_tool_mode_idx = 1 if think else 0
+        tool_mode = st.radio(
+            "Tool Execution Mode",
+            ["Prompt-based (JSON / ReAct)", "Native Function Calling"],
+            index=default_tool_mode_idx,
+            help="Native Function Calling is strongly recommended when using Native Think Mode." if think else None
+        )
         selected_tools = st.multiselect(
             "Active Toolbox",
             options=["multiply", "add", "subtract", "divide", "power", "execute_command", "final_answer"],
-            default=["multiply", "add", "execute_command", "final_answer"],
+            default=["multiply", "add", "execute_command", "final_answer"] if tool_mode == "Prompt-based (JSON / ReAct)" else ["multiply", "add", "execute_command"],
         )
 
     with st.expander("🧠 Memory & Planning", expanded=False):
         memory_type = st.selectbox("Memory Architecture", ["Summarization Memory", "Trimming Memory", "Base Memory"], index=0)
         trim_k = st.slider("Trimming Window Size", min_value=2, max_value=20, value=6)
-        use_react = st.checkbox("Enable ReAct Planner", value=True)
-        max_steps = st.slider("Max ReAct Steps", min_value=1, max_value=20, value=10)
+        use_react = st.checkbox(
+            "Enable ReAct Planner",
+            value=(not think),
+            disabled=think,
+            help="Disabled when Native Think Mode is ON, as reasoning is performed natively by the model." if think else None
+        )
+        max_steps = st.slider("Max Autonomy Steps", min_value=1, max_value=20, value=10)
 
     st.divider()
     if st.button("🧹 Clear Chat & Traces", use_container_width=True):
@@ -220,6 +239,7 @@ agent = get_or_create_agent(
     model=model,
     custom_base_url=custom_base_url,
     api_key=api_key,
+    think=think,
     tool_mode=tool_mode,
     selected_tools=selected_tools,
     memory_type=memory_type,
@@ -230,7 +250,8 @@ agent = get_or_create_agent(
 
 # Header
 st.subheader("🤖 TinyAgent Interactive Workbench")
-st.caption(f"Connected to **{agent.llm.base_url}** (Model: `{agent.llm.model}`) | Planner: `{type(agent.planner).__name__ if agent.planner else 'None'}` | Tools: `{len(agent.tools.registry)} registered`")
+planner_desc = "Native Model Reasoning" if agent.llm.think else (type(agent.planner).__name__ if agent.planner else 'None')
+st.caption(f"Connected to **{agent.llm.base_url}** (Model: `{agent.llm.model}`) | Mode: `{planner_desc}` | Tools: `{len(agent.tools.registry)} registered`")
 
 # Main Layout: 2 columns (Chat Interface & Debug/Traces Viewer)
 col_chat, col_debug = st.columns([1.1, 0.9], gap="large")

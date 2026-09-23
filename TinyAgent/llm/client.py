@@ -102,9 +102,11 @@ class LLM:
         if message.get("tool_calls"):
             tool_call = message["tool_calls"][0]
 
+        reasoning = message.get("reasoning") or message.get("reasoning_content")
+
         return Response(
             content=message.get("content", ""),
-            reasoning=message.get("reasoning"),
+            reasoning=reasoning,
             tool_call=tool_call,
             metadata=result,
         )

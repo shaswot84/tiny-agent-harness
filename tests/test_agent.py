@@ -133,4 +133,57 @@ ACTION:
     assert result == "Max steps reached without completion."
 
 
+def test_agent_native_thinking_mode():
+    from TinyAgent.tools import NativeTools
+    from TinyAgent.planner import ReAct
+
+    class MockThinkingLLM:
+        def __init__(self):
+            self.think = True
+            self.turn = 0
+
+        def generate(self, messages, tools=None):
+            self.turn += 1
+            if self.turn == 1:
+                return Response(
+                    content="",
+                    reasoning="Let's compute 7 plus 8 using the tool add.",
+                    tool_call={
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {"name": "add", "arguments": '{"a": 7, "b": 8}'},
+                    },
+                )
+            return Response(
+                content="The sum is 15.",
+                reasoning="The tool returned 15. I will now present the final answer.",
+            )
+
+    tools = NativeTools()
+    tools.add_tool("add", lambda a, b: str(int(a) + int(b)), "Add two numbers")
+    planner = ReAct(max_steps=5)
+
+    agent = TinyAgent(
+        llm=MockThinkingLLM(),
+        memory=Memory(),
+        tools=tools,
+        planner=planner,
+        record_trajectory=True,
+    )
+
+    answer = agent.run("What is 7 plus 8?")
+    assert answer == "The sum is 15."
+
+    messages = agent.memory.get_messages()
+    # Ensure ReAct prompt was NOT injected into system prompt
+    assert not any("# ReAct" in msg.get("content", "") for msg in messages)
+
+    # Ensure trajectory captured native reasoning
+    steps = agent.trajectory.runs[0]["steps"]
+    assert len(steps) == 2
+    assert "Let's compute 7 plus 8" in steps[0].thought
+    assert "The tool returned 15" in steps[1].thought
+
+
+
 

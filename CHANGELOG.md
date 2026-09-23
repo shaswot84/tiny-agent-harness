@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0] - 2026-09-23
 
 ### Added
+- **Native Thinking & Reasoning Mode (`TinyAgent.agent`, `TinyAgent.llm`)**:
+  - Integrated native model reasoning support (e.g. DeepSeek-R1, QwQ, Gemma thinking models).
+  - When `llm.think` is enabled, `TinyAgent` automatically bypasses prompt-based ReAct system prompt stuffing and regex text parsing, allowing the model to use internal reasoning tokens without prompt interference.
+  - Extended `TinyAgent.llm.client` to extract native reasoning from both `reasoning` and `reasoning_content` fields.
+  - Added native thinking toggle in Streamlit sidebar, seamlessly switching between prompt-based ReAct and native reasoning execution.
+- **Interactive Context Window Visualizer (`context_viewer.py`)**:
+  - Extracted dedicated visualizer module rendering live token usage, message distributions, and snapshot history at the bottom of the Streamlit workbench.
 - **Interactive Streamlit Workbench (`app.py`)**:
   - Built full-featured web UI for chatting with TinyAgent in real time.
   - Interactive configuration sidebar: switch providers (`ollama_cloud`, `ollama`, `groq`, `openai`, etc.), models, memory strategies (`Summarization`, `Trimming`, `Base`), and toggle ReAct / tool execution modes (`Native` vs `Prompt-based`).
