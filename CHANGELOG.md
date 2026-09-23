@@ -21,9 +21,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added automatic tool schema generation fallback in `Tools.add_tool(..., schema=None)`.
   - Exported `NativeTools`, `tool_to_schema`, and `toolbox` in `TinyAgent` root package.
 
+- **ReAct Planner (`TinyAgent.planner`)**:
+  - Introduced `ReAct` planner module with configurable `max_steps`.
+  - Added ReAct system prompt template specifying `THOUGHT`, `ACTION` JSON block, and `final_answer` completion semantics.
+  - Implemented `ReAct.parse()` extracting `THOUGHT` reasoning and `ACTION` tool invocations using regex patterns into `Response.reasoning` and `Response.content`.
+  - Integrated `planner` argument into `TinyAgent` constructor, automatically prepending `planner.prompt` into system memory and parsing step responses.
+  - Exported `ReAct` in `TinyAgent` and `TinyAgent.planner`.
+  - Added unit and agent integration tests in `tests/test_react.py`.
+
 - **Iterative Tool Execution Loop (`TinyAgent.agent`)**:
   - Implemented multi-step loop in `TinyAgent.run()` / `_step()` to execute tools and feed observation responses back to the LLM until `is_done()` or safety step limit is reached.
   - Added automatic tools system prompt injection for prompt-based models when tools are registered.
+
 
 - **Section-Aware Summarization Memory (`TinyAgent.memory`)**:
   - Enhanced `SummarizationMemory` to separate and preserve system instructions and `[Tools]` definitions while updating only the `[Conversation Summary]` section.

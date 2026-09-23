@@ -1,7 +1,10 @@
+from typing import Any
+
 from ..llm import LLM, Response
 from ..trajectory import Trajectory
 from ..memory import Memory
 from ..tools import Tools
+
 
 
 
@@ -20,6 +23,7 @@ class TinyAgent:
         llm: LLM,
         memory: Memory,
         tools: Tools | None = None,
+        planner: Any = None,
         record_trajectory: bool = False,
     ):
         """Initialize the TinyAgent with its core runtime dependencies.
@@ -28,12 +32,13 @@ class TinyAgent:
             llm: Language model wrapper implementing generate(messages, tools=...).
             memory: Memory store holding the conversation history turns.
             tools: Optional Tools registry containing callable tools and schemas.
+            planner: Optional planner module (e.g. ReAct) to format prompts and parse thoughts/actions.
             record_trajectory: When True, logs steps, queries, and observations to Trajectory.
         """
         self.llm = llm
         self.memory = memory
         self.tools = tools
-        self.planner = None
+        self.planner = planner
 
         # Trajectory tracker logs runs and execution steps for auditing or evaluation
         self.trajectory = Trajectory() if record_trajectory else None
@@ -53,13 +58,18 @@ class TinyAgent:
         Returns:
             The agent's text response.
         """
-        # For text/JSON-prompted models (non-native tool calling), inject tool
-        # descriptions and instructions into the system prompt if not present.
-        if self.tools and not self.tools.native and self.tools.descriptions:
-            existing_messages = self.memory.get_messages()
-            has_system = any(msg.get("role") == "system" for msg in existing_messages)
-            if not has_system:
-                self.memory.add("system", self.tools.prompt)
+        # For text/JSON-prompted models (non-native tool calling), inject planner
+        # instructions and tool descriptions into the system prompt if not present.
+        existing_messages = self.memory.get_messages()
+        has_system = any(msg.get("role") == "system" for msg in existing_messages)
+        if not has_system:
+            prompt_parts = []
+            if self.planner and getattr(self.planner, "prompt", None):
+                prompt_parts.append(self.planner.prompt.strip())
+            if self.tools and not self.tools.native and self.tools.descriptions:
+                prompt_parts.append(self.tools.prompt.strip())
+            if prompt_parts:
+                self.memory.add("system", "\n\n".join(prompt_parts))
 
         # Store user query into conversation history
         self.memory.add("user", task)
@@ -69,7 +79,7 @@ class TinyAgent:
             self.trajectory.initialize(task)
 
         # Execute agent steps until a final answer is produced
-        max_steps = 10
+        max_steps = getattr(self.planner, "max_steps", 10) if self.planner else 10
         for _ in range(max_steps):
             response = self._step()
             if not self.tools:
@@ -101,9 +111,14 @@ class TinyAgent:
         # Request completion with full conversation history
         response = self.llm.generate(self.memory.get_messages(), tools=schemas)
 
+        # Parse planner formatting (e.g. ReAct THOUGHT & ACTION) if configured
+        if self.planner and hasattr(self.planner, "parse"):
+            response = self.planner.parse(response)
+
         # Parse text-based tool calls if native calling wasn't used or produced no tool_call
         if self.tools and not response.tool_call and not self.tools.native:
             response = self.tools.parse(response)
+
 
         # If a tool call is present, execute it and feed observation back
         if self.tools and response.tool_call:
