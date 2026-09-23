@@ -37,12 +37,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-- **Section-Aware Summarization Memory (`TinyAgent.memory`)**:
-  - Enhanced `SummarizationMemory` to separate and preserve system instructions and `[Tools]` definitions while updating only the `[Conversation Summary]` section.
+- **Interactive Streamlit Workbench (`app.py`)**:
+  - Built full-featured web UI for chatting with TinyAgent in real time.
+  - Interactive configuration sidebar: switch providers (`ollama_cloud`, `ollama`, `groq`, `openai`, etc.), models, memory strategies (`Summarization`, `Trimming`, `Base`), and toggle ReAct / tool execution modes (`Native` vs `Prompt-based`).
+  - Real-time Trace & Debug Center:
+    - Step-by-step collapsible trajectory view displaying `💭 Thought`, `🛠️ Action`, `👁️ Observation`, and `💬 Final Answer`.
+    - Memory state inspector detailing message history and token context.
+    - Tool registry inspector displaying schemas and active system prompt.
+    - Terminal-formatted Unicode trajectory box viewer.
 
-- **CLI Trajectory Box Formatting (`TinyAgent.trajectory`)**:
-  - Added `Trajectory.format_latest_run()` rendering clean Unicode bordered boxes (`┌─┐`, `│`, `└─┘`) with accurate display widths for terminal emojis and multi-line word wrapping.
-  - Added interactive CLI chat loop in `main.py` with `/exit` command and automatic trajectory box display after each turn.
 
 - **Comprehensive Test Coverage**:
   - Added test cases in `tests/test_tools.py` for `parse`, `execute`, `observation`, `is_done`, `tool_to_schema`, `NativeTools`, and `toolbox`.
