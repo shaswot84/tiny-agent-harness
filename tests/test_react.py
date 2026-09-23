@@ -102,5 +102,5 @@ ACTION:
     assert len(steps) == 2
     assert steps[0].thought == "I need to multiply 3 and 4."
     assert steps[0].action == {"tool": "multiply", "kwargs": {"a": 3, "b": 4}}
-    assert steps[0].observation == "12"
+    assert "12" in str(steps[0].observation)
     assert steps[1].thought == "The result of 3 * 4 is 12."

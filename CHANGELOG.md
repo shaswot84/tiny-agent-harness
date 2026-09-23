@@ -29,9 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Exported `ReAct` in `TinyAgent` and `TinyAgent.planner`.
   - Added unit and agent integration tests in `tests/test_react.py`.
 
-- **Iterative Tool Execution Loop (`TinyAgent.agent`)**:
-  - Implemented multi-step loop in `TinyAgent.run()` / `_step()` to execute tools and feed observation responses back to the LLM until `is_done()` or safety step limit is reached.
-  - Added automatic tools system prompt injection for prompt-based models when tools are registered.
+- **Autonomy Execution Loop (`TinyAgent.agent`)**:
+  - Implemented structured autonomy loop in `TinyAgent.run()` bounded by `planner.max_steps` with fallback `"Max steps reached without completion."`.
+  - Added modular `TinyAgent._step()` coordinating thought generation, ReAct/tool parsing, trajectory recording, and stopping evaluation.
+  - Implemented `TinyAgent._execute_action(response)` dispatching tool execution, appending observation messages to memory, and recording observations into trajectory.
+  - Built system prompt assembling assistant identity, planner prompt, and tool registry prompts during initialization.
+
 
 
 - **Section-Aware Summarization Memory (`TinyAgent.memory`)**:

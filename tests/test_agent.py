@@ -99,7 +99,38 @@ def test_agent_tool_execution_loop():
     # Check trajectory has both the tool call step and final answer
     assert len(agent.trajectory.runs) == 1
     assert len(agent.trajectory.runs[0]["steps"]) == 2
-    assert agent.trajectory.runs[0]["steps"][0].observation == "30.0"
+    assert "30.0" in str(agent.trajectory.runs[0]["steps"][0].observation)
     assert agent.trajectory.runs[0]["steps"][1].answer == "5 times 6 is 30.0"
+
+
+def test_agent_max_steps_reached():
+    from TinyAgent.tools import Tools
+    from TinyAgent.planner import ReAct
+
+    tools = Tools()
+    tools.add_tool("noop", lambda: "ok", "No-op tool")
+
+    class EndlessToolLLM:
+        def generate(self, messages, tools=None):
+            return Response(
+                content="""THOUGHT: Loop forever
+ACTION:
+{
+    "tool": "noop",
+    "kwargs": {}
+}"""
+            )
+
+    planner = ReAct(max_steps=2)
+    agent = TinyAgent(
+        llm=EndlessToolLLM(),
+        memory=Memory(),
+        tools=tools,
+        planner=planner,
+    )
+
+    result = agent.run("Infinite loop task")
+    assert result == "Max steps reached without completion."
+
 
 

@@ -4,163 +4,86 @@ from ..llm import LLM, Response
 from ..trajectory import Trajectory
 from ..memory import Memory
 from ..tools import Tools
-
-
+from ..planner import ReAct
 
 
 class TinyAgent:
-    """A minimal, modular, and educational agent framework.
-
-    Coordinates the core components of the agent lifecycle:
-    - LLM: Model provider interface for generating completions.
-    - Memory: Conversation state management (short-term, long-term RAG, summarization).
-    - Tools: Tool registry for schema declarations, text parsing, and execution.
-    - Trajectory: Optional step-by-step telemetry and interaction logging.
-    """
+    """A minimal, modular, and educational agent framework."""
 
     def __init__(
         self,
         llm: LLM,
         memory: Memory,
         tools: Tools | None = None,
-        planner: Any = None,
-        record_trajectory: bool = False,
+        planner: ReAct | None = None,
+        record_trajectory: bool = True,
     ):
-        """Initialize the TinyAgent with its core runtime dependencies.
-
-        Args:
-            llm: Language model wrapper implementing generate(messages, tools=...).
-            memory: Memory store holding the conversation history turns.
-            tools: Optional Tools registry containing callable tools and schemas.
-            planner: Optional planner module (e.g. ReAct) to format prompts and parse thoughts/actions.
-            record_trajectory: When True, logs steps, queries, and observations to Trajectory.
-        """
         self.llm = llm
         self.memory = memory
         self.tools = tools
         self.planner = planner
 
-        # Trajectory tracker logs runs and execution steps for auditing or evaluation
         self.trajectory = Trajectory() if record_trajectory else None
 
+        # Build system prompt with all components
+        if self.planner or self.tools:
+            system_prompt = "You are a helpful assistant.\n\n"
+            if self.planner:
+                system_prompt += self.planner.prompt
+            if self.tools:
+                system_prompt += self.tools.prompt
+            self.memory.add("system", system_prompt)
+
     def run(self, task: str) -> str:
-        """Run the agent to complete a user task.
-
-        Lifecycle:
-        1. Injects tool prompt into system message if prompt-based tools are registered.
-        2. Records the initial user prompt in memory.
-        3. Initializes a new run in trajectory tracker (if enabled).
-        4. Triggers the step execution loop.
-
-        Args:
-            task: The user query or task instruction.
-
-        Returns:
-            The agent's text response.
-        """
-        # For text/JSON-prompted models (non-native tool calling), inject planner
-        # instructions and tool descriptions into the system prompt if not present.
-        existing_messages = self.memory.get_messages()
-        has_system = any(msg.get("role") == "system" for msg in existing_messages)
-        if not has_system:
-            prompt_parts = []
-            if self.planner and getattr(self.planner, "prompt", None):
-                prompt_parts.append(self.planner.prompt.strip())
-            if self.tools and not self.tools.native and self.tools.descriptions:
-                prompt_parts.append(self.tools.prompt.strip())
-            if prompt_parts:
-                self.memory.add("system", "\n\n".join(prompt_parts))
-
-        # Store user query into conversation history
+        """Run the agent on a task."""
         self.memory.add("user", task)
-
-        # Start a new trace run for this query in trajectory
         if self.trajectory:
             self.trajectory.initialize(task)
 
-        # Execute agent steps until a final answer is produced
-        max_steps = getattr(self.planner, "max_steps", 10) if self.planner else 10
-        for _ in range(max_steps):
-            response = self._step()
-            if not self.tools:
-                return response.content
-            if self.tools.is_done(response):
-                return response.content
+        # *Autonomy* loop
+        max_steps = self.planner.max_steps if self.planner else 10
+        for step in range(max_steps):
+            result = self._step()
+            if result is not None:
+                return result
 
-        return response.content
+        return "Max steps reached without completion."
 
-    def _step(self) -> Response:
-        """Perform a single step of the agent execution.
-
-        1. Fetches available native tool schemas (if configured).
-        2. Queries the LLM with all past messages in memory.
-        3. Parses prompt-based tool calls from text if native calling is not used.
-        4. If a tool call is present:
-           - Executes the tool.
-           - Records the step with observation into trajectory.
-           - Appends assistant action and tool observation to memory.
-        5. If no tool call is present:
-           - Records the final answer into memory and trajectory.
-
-        Returns:
-            The Response object produced for this step.
-        """
-        # Pass native function schemas to the LLM if available
+    def _step(self) -> str | None:
+        """Perform a single step."""
+        # THOUGHT: Generate response and add to memory
         schemas = self.tools.schemas if self.tools else None
+        response = self.llm.generate(
+            self.memory.get_messages(), tools=schemas
+        )
+        self.memory.add(
+            "assistant", response.content, tool_call=response.tool_call
+        )
 
-        # Request completion with full conversation history
-        response = self.llm.generate(self.memory.get_messages(), tools=schemas)
-
-        # Parse planner formatting (e.g. ReAct THOUGHT & ACTION) if configured
-        if self.planner and hasattr(self.planner, "parse"):
+        # Tool parsing
+        if self.planner:
             response = self.planner.parse(response)
-
-        # Parse text-based tool calls if native calling wasn't used or produced no tool_call
-        if self.tools and not response.tool_call and not self.tools.native:
+        if self.tools:
             response = self.tools.parse(response)
 
-
-        # If a tool call is present, execute it and feed observation back
-        if self.tools and response.tool_call:
-            # Check if this tool call is a stopping final_answer
-            if self.tools.is_done(response):
-                self.memory.add("assistant", response.content)
-                if self.trajectory:
-                    self.trajectory.add(response)
-                return response
-
-            observation = self.tools.execute(response)
-            obs_str = str(observation)
-
-            # Record step with action and observation into trajectory
-            if self.trajectory:
-                self.trajectory.add(response, observation=obs_str)
-
-            # Record assistant turn (with tool call info) and observation turn into memory
-            self.memory.add(
-                "assistant",
-                response.content,
-                tool_call=response.tool_call,
-            )
-            obs_role, obs_content = self.tools.observation(obs_str)
-            self.memory.add(obs_role, obs_content)
-        else:
-            # Final text response without tool calls
-            self.memory.add("assistant", response.content)
+        # ANSWER: Stopping mechanism
+        if not self.tools or self.tools.is_done(response):
             if self.trajectory:
                 self.trajectory.add(response)
+            return response.content
 
-        return response
+        return self._execute_action(response)
 
-    def _execute_action(self, action: str) -> str | None:
-        """Execute a tool action.
+    def _execute_action(self, response: Response) -> None:
+        """Execute a tool action."""
 
-        Args:
-            action: Description or serialized name of the action to invoke.
+        # ACTION: execute tools
+        result = self.tools.execute(response)
 
-        Returns:
-            Observation result from executing the action.
-        """
-        # Placeholder - will be implemented in later chapters
-        return f"Executed action: {action}"
+        # OBSERVATION: add tool results to memory and display
+        role, observation = self.tools.observation(result)
+        self.memory.add(role, observation)
+        if self.trajectory:
+            self.trajectory.add(response, observation)
 
+        return None
