@@ -16,6 +16,7 @@ from TinyAgent import (
     ReAct,
     toolbox,
 )
+from context_viewer import render_context_window_visualizer
 
 # Page configuration
 st.set_page_config(
@@ -81,6 +82,8 @@ def initialize_session():
         st.session_state.messages = []  # list of {"role": "user"|"assistant", "content": str, "run_index": int}
     if "runs_history" not in st.session_state:
         st.session_state.runs_history = []  # list of serialized trajectory runs
+    if "context_snapshots" not in st.session_state:
+        st.session_state.context_snapshots = []  # list of snapshots of context memory over time
     if "agent" not in st.session_state:
         st.session_state.agent = None
     if "agent_config_hash" not in st.session_state:
@@ -206,6 +209,7 @@ with st.sidebar:
     if st.button("🧹 Clear Chat & Traces", use_container_width=True):
         st.session_state.messages = []
         st.session_state.runs_history = []
+        st.session_state.context_snapshots = []
         st.session_state.agent = None
         st.session_state.agent_config_hash = None
         st.rerun()
@@ -273,6 +277,14 @@ with col_chat:
             latest_run = agent.trajectory.runs[-1]
             st.session_state.runs_history.append(latest_run)
             current_run_idx = len(st.session_state.runs_history) - 1
+
+        # Capture context snapshot
+        if agent.memory:
+            st.session_state.context_snapshots.append({
+                "turn": len(st.session_state.runs_history),
+                "query": user_query,
+                "messages": [dict(m) for m in agent.memory.get_messages()],
+            })
 
         st.session_state.messages.append({
             "role": "assistant",
@@ -355,4 +367,10 @@ with col_debug:
                 st.code(agent.trajectory.format_latest_run(width=68), language="text")
             else:
                 st.info("No box formatted trajectory recorded yet.")
+
+    # -------------------------------------------------------------
+    # Bottom Panel: Interactive Context Window Visualizer
+    # -------------------------------------------------------------
+    render_context_window_visualizer(agent)
+
 
