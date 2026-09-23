@@ -29,7 +29,7 @@ THOUGHT: [Your reasoning about what to do next]
 ACTION:
 {
     "tool": "a_tool_name",
-    "kwargs": {"param": "value"},
+    "kwargs": {"param": "value"}
 }
  
 An observation will be provided after each action. You do not generate the 

@@ -9,6 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.3.0] - 2026-09-23
+
+### Added
+- **Interactive Streamlit Workbench (`app.py`)**:
+  - Built full-featured web UI for chatting with TinyAgent in real time.
+  - Interactive configuration sidebar: switch providers (`ollama_cloud`, `ollama`, `groq`, `openai`, etc.), models, memory strategies (`Summarization`, `Trimming`, `Base`), and toggle ReAct / tool execution modes (`Native` vs `Prompt-based`).
+  - Real-time Trace & Debug Center with independent scrolling viewport:
+    - Step-by-step collapsible trajectory view displaying `💭 Thought`, `🛠️ Action`, `👁️ Observation`, and `💬 Final Answer`.
+    - Memory state inspector detailing message history and token context.
+    - Tool registry inspector displaying schemas and active system prompt.
+    - Terminal-formatted Unicode trajectory box viewer.
+- **ReAct Planner (`TinyAgent.planner`)**:
+  - Introduced `ReAct` planner module with configurable `max_steps`.
+  - Added ReAct system prompt template specifying `THOUGHT`, `ACTION` JSON block, and `final_answer` completion semantics.
+  - Implemented `ReAct.parse()` extracting `THOUGHT` reasoning and `ACTION` tool invocations using regex patterns into `Response.reasoning` and `Response.content`.
+  - Integrated `planner` argument into `TinyAgent` constructor, automatically prepending `planner.prompt` into system memory and parsing step responses.
+  - Exported `ReAct` in `TinyAgent` and `TinyAgent.planner`.
+  - Added unit and agent integration tests in `tests/test_react.py`.
+- **Autonomy Execution Loop (`TinyAgent.agent`)**:
+  - Implemented structured autonomy loop in `TinyAgent.run()` bounded by `planner.max_steps` with fallback `"Max steps reached without completion."`.
+  - Added modular `TinyAgent._step()` coordinating thought generation, ReAct/tool parsing, trajectory recording, and stopping evaluation.
+  - Implemented `TinyAgent._execute_action(response)` dispatching tool execution, appending observation messages to memory, and recording observations into trajectory.
+  - Built system prompt assembling assistant identity, planner prompt, and tool registry prompts during initialization.
+- **Resilient JSON Tool Parsing (`TinyAgent.tools`)**:
+  - Added resilient JSON parsing with automatic sanitization for trailing commas (e.g. `{"a": 1, "b": 2,}`) in prompt-based and native tool calls.
+
+---
+
+## [0.2.0] - 2026-09-22
+
 ### Added
 - **Tool Parsing, Execution & Native Support (`TinyAgent.tools`)**:
   - Added `Tools.parse()` to extract JSON tool calls from free-form model text.
@@ -20,38 +52,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `TinyAgent.tools.toolbox` containing standard built-in functions: `add`, `multiply`, `subtract`, `divide`, `power`, `execute_command`, and `final_answer`.
   - Added automatic tool schema generation fallback in `Tools.add_tool(..., schema=None)`.
   - Exported `NativeTools`, `tool_to_schema`, and `toolbox` in `TinyAgent` root package.
-
-- **ReAct Planner (`TinyAgent.planner`)**:
-  - Introduced `ReAct` planner module with configurable `max_steps`.
-  - Added ReAct system prompt template specifying `THOUGHT`, `ACTION` JSON block, and `final_answer` completion semantics.
-  - Implemented `ReAct.parse()` extracting `THOUGHT` reasoning and `ACTION` tool invocations using regex patterns into `Response.reasoning` and `Response.content`.
-  - Integrated `planner` argument into `TinyAgent` constructor, automatically prepending `planner.prompt` into system memory and parsing step responses.
-  - Exported `ReAct` in `TinyAgent` and `TinyAgent.planner`.
-  - Added unit and agent integration tests in `tests/test_react.py`.
-
-- **Autonomy Execution Loop (`TinyAgent.agent`)**:
-  - Implemented structured autonomy loop in `TinyAgent.run()` bounded by `planner.max_steps` with fallback `"Max steps reached without completion."`.
-  - Added modular `TinyAgent._step()` coordinating thought generation, ReAct/tool parsing, trajectory recording, and stopping evaluation.
-  - Implemented `TinyAgent._execute_action(response)` dispatching tool execution, appending observation messages to memory, and recording observations into trajectory.
-  - Built system prompt assembling assistant identity, planner prompt, and tool registry prompts during initialization.
-
-
-
-- **Interactive Streamlit Workbench (`app.py`)**:
-  - Built full-featured web UI for chatting with TinyAgent in real time.
-  - Interactive configuration sidebar: switch providers (`ollama_cloud`, `ollama`, `groq`, `openai`, etc.), models, memory strategies (`Summarization`, `Trimming`, `Base`), and toggle ReAct / tool execution modes (`Native` vs `Prompt-based`).
-  - Real-time Trace & Debug Center:
-    - Step-by-step collapsible trajectory view displaying `💭 Thought`, `🛠️ Action`, `👁️ Observation`, and `💬 Final Answer`.
-    - Memory state inspector detailing message history and token context.
-    - Tool registry inspector displaying schemas and active system prompt.
-    - Terminal-formatted Unicode trajectory box viewer.
-
-
+- **Section-Aware Summarization Memory (`TinyAgent.memory`)**:
+  - Enhanced `SummarizationMemory` to separate and preserve system instructions and `[Tools]` definitions while updating only the `[Conversation Summary]` section.
+- **CLI Trajectory Box Formatting (`TinyAgent.trajectory`)**:
+  - Added `Trajectory.format_latest_run()` rendering clean Unicode bordered boxes (`┌─┐`, `│`, `└─┘`) with accurate display widths for terminal emojis and multi-line word wrapping.
+  - Added interactive CLI chat loop in `main.py` with `/exit` command and automatic trajectory box display after each turn.
 - **Comprehensive Test Coverage**:
   - Added test cases in `tests/test_tools.py` for `parse`, `execute`, `observation`, `is_done`, `tool_to_schema`, `NativeTools`, and `toolbox`.
   - Added `test_agent_tool_execution_loop` and `test_agent_tools_system_prompt` in `tests/test_agent.py`.
   - Added `test_summarization_memory_preserves_tools_and_instructions` in `tests/test_memory.py`.
   - Added `test_trajectory_format_latest_run` in `tests/test_trajectory.py`.
+
+---
+
 ## [0.1.0] - 2026-09-19
 
 ### Added

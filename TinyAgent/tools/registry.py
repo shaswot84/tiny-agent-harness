@@ -1,5 +1,6 @@
 import inspect
 import json
+import re
 from typing import Any, Callable
 
 from TinyAgent.llm import Response
@@ -13,6 +14,22 @@ TYPE_MAP = {
     list: "array",
     dict: "object",
 }
+
+
+def _clean_json_str(s: str) -> str:
+    """Sanitize typical LLM JSON quirks like trailing commas before closing braces/brackets."""
+    # Remove trailing commas before } or ]
+    cleaned = re.sub(r",\s*([}\]])", r"\1", s)
+    return cleaned
+
+
+def _safe_json_loads(s: str) -> Any:
+    """Parse JSON with fallback sanitization for trailing commas and syntax quirks."""
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        return json.loads(_clean_json_str(s))
+
 
 
 def tool_to_schema(function: Callable) -> dict:
@@ -135,14 +152,15 @@ To use a tool, respond with JSON:
         # Locate substring starting from first '{' and ending at last '}'
         if '"tool":' in text or '"tool:"' in text:
             start, end = text.find("{"), text.rfind("}") + 1
-            tool_call = json.loads(text[start:end])
-
-            # Return updated Response with populated tool_call
-            return Response(
-                content=response.content,
-                reasoning=response.reasoning,
-                tool_call=tool_call,
-            )
+            try:
+                tool_call = _safe_json_loads(text[start:end])
+                return Response(
+                    content=response.content,
+                    reasoning=response.reasoning,
+                    tool_call=tool_call,
+                )
+            except Exception:
+                pass
 
         return response
 
@@ -169,7 +187,7 @@ To use a tool, respond with JSON:
             raw_args = tool_call["function"].get("arguments", {})
             if isinstance(raw_args, str):
                 try:
-                    kwargs = json.loads(raw_args) if raw_args.strip() else {}
+                    kwargs = _safe_json_loads(raw_args) if raw_args.strip() else {}
                 except Exception:
                     kwargs = {}
             elif isinstance(raw_args, dict):
@@ -181,7 +199,7 @@ To use a tool, respond with JSON:
             kwargs = tool_call.get("kwargs", {})
             if isinstance(kwargs, str):
                 try:
-                    kwargs = json.loads(kwargs)
+                    kwargs = _safe_json_loads(kwargs)
                 except Exception:
                     pass
 
@@ -253,7 +271,7 @@ To use a tool, respond with JSON:
                 response.content = raw_args["answer"]
             elif isinstance(raw_args, str):
                 try:
-                    parsed = json.loads(raw_args)
+                    parsed = _safe_json_loads(raw_args)
                     response.content = parsed.get("answer", raw_args) if isinstance(parsed, dict) else str(parsed)
                 except Exception:
                     response.content = raw_args
@@ -291,7 +309,10 @@ class NativeTools(Tools):
         # Extract the tool name and arguments from the tool call
         args = response.tool_call["function"]["arguments"]
         if isinstance(args, str):
-            args = json.loads(args)
+            try:
+                args = _safe_json_loads(args)
+            except Exception:
+                args = {}
         tool_call = {
             "tool": response.tool_call["function"]["name"],
             "kwargs": args,
@@ -303,6 +324,7 @@ class NativeTools(Tools):
             reasoning=response.reasoning,
             tool_call=tool_call,
         )
+
 
     def observation(self, result: str) -> tuple[str, str]:
         """Native tool results use the 'tool' role."""

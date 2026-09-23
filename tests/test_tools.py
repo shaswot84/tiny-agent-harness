@@ -160,6 +160,14 @@ def test_tools_parse():
     assert parsed.content == resp.content
     assert parsed.reasoning == "Need to add numbers"
 
+    # Response with trailing comma in kwargs and tool call object (LLM quirk)
+    resp_trailing = Response(
+        content='ACTION:\n{\n    "tool": "add",\n    "kwargs": {"a": 4.6, "b": 6.685,},\n}',
+        reasoning="Handling addition with trailing comma",
+    )
+    parsed_trailing = tools.parse(resp_trailing)
+    assert parsed_trailing.tool_call == {"tool": "add", "kwargs": {"a": 4.6, "b": 6.685}}
+
     # Response without tool call
     plain_resp = Response(content="Just a regular message")
     assert tools.parse(plain_resp).tool_call is None
