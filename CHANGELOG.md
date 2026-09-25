@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Agent Evaluation Framework (`TinyAgent.evaluation`)**:
+  - Added `Benchmark` dataclass with `name`, `examples`, and `scorer` callback.
+  - Added `Scorer` type definition for prediction and example evaluation (`(prediction: str, example: dict) -> bool | float`).
+  - Added `Evaluator` class to benchmark agent instances over a suite of tasks, scoring predictions and calculating aggregate pass rates.
+- **Native ReAct Planner (`TinyAgent.planner.NativeReAct`)**:
+  - Added `NativeReAct` planner subclass for native reasoning and native tool-calling models (e.g. `think=True`).
+  - Eliminates prompt stuffing overhead and passes native model reasoning and tool responses directly without regex text extraction.
+
 ---
 
 ## [0.3.0] - 2026-09-23

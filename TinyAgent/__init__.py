@@ -9,8 +9,8 @@ from .memory import (
     RAGMemory,
 )
 from .tools import Tools, NativeTools, tool_to_schema, toolbox
-from .planner import ReAct
-from .evaluation import Benchmark, Scorer
+from .planner import ReAct, NativeReAct
+from .evaluation import Benchmark, Scorer, Evaluator
 
 __all__ = [
     "TinyAgent",
@@ -28,8 +28,10 @@ __all__ = [
     "tool_to_schema",
     "toolbox",
     "ReAct",
+    "NativeReAct",
     "Benchmark",
     "Scorer",
+    "Evaluator",
 ]
 
 

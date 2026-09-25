@@ -75,3 +75,17 @@ using any other tools.
         response.content = result["ACTION"]
         response.reasoning = result["THOUGHT"]
         return response
+
+
+class NativeReAct(ReAct):
+    """Native ReAct planner for reasoning models using native tool calling and reasoning."""
+
+    @property
+    def prompt(self) -> str:
+        """No prompt injection needed since reasoning and actions are native."""
+        return ""
+
+    def parse(self, response: Response) -> Response:
+        """Preserve native response without regex extraction."""
+        return response
+
