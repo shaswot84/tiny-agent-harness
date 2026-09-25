@@ -10,6 +10,7 @@ from .memory import (
 )
 from .tools import Tools, NativeTools, tool_to_schema, toolbox
 from .planner import ReAct
+from .evaluation import Benchmark, Scorer
 
 __all__ = [
     "TinyAgent",
@@ -27,6 +28,8 @@ __all__ = [
     "tool_to_schema",
     "toolbox",
     "ReAct",
+    "Benchmark",
+    "Scorer",
 ]
 
 
