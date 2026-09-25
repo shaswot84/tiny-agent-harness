@@ -2,6 +2,8 @@
 
 import json
 import os
+from datetime import datetime
+
 import streamlit as st
 
 from TinyAgent import (
@@ -303,6 +305,7 @@ with col_chat:
         if agent.memory:
             st.session_state.context_snapshots.append({
                 "turn": len(st.session_state.runs_history),
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "query": user_query,
                 "messages": [dict(m) for m in agent.memory.get_messages()],
             })

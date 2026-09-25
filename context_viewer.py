@@ -96,7 +96,10 @@ def render_context_window_visualizer(agent, snapshots: list[dict] | None = None)
         snapshot_choices = ["Latest (Live Memory)"]
         if snapshots:
             for s in snapshots:
-                snapshot_choices.append(f"Turn #{s['turn']} ({s['timestamp']}) - {s['query'][:25]}...")
+                turn = s.get("turn", "?")
+                timestamp = s.get("timestamp", "no timestamp")
+                query = str(s.get("query", ""))
+                snapshot_choices.append(f"Turn #{turn} ({timestamp}) - {query[:25]}...")
         chosen_snapshot = st.selectbox("Context Snapshot", snapshot_choices, index=0)
 
     with col_limit:
@@ -120,9 +123,15 @@ def render_context_window_visualizer(agent, snapshots: list[dict] | None = None)
         active_messages = agent.memory.get_messages() if agent and agent.memory else []
     else:
         # Extract turn number
-        turn_id = int(chosen_snapshot.split("#")[1].split(" ")[0])
-        match = next((s for s in snapshots if s["turn"] == turn_id), None)
-        active_messages = match["messages"] if match else (agent.memory.get_messages() if agent and agent.memory else [])
+        try:
+            turn_id = int(chosen_snapshot.split("#")[1].split(" ")[0])
+        except (IndexError, ValueError):
+            turn_id = None
+        match = next((s for s in snapshots if s.get("turn") == turn_id), None)
+        if match is not None and match.get("messages"):
+            active_messages = match["messages"]
+        else:
+            active_messages = agent.memory.get_messages() if agent and agent.memory else []
 
     ctx_data = analyze_context_window(active_messages, max_context_tokens=selected_limit)
 
