@@ -16,11 +16,15 @@ from .evaluation import (
     Evaluator,
     exact_match_scorer,
     mmlu_pro,
+    mmlu_pro_mcq,
     programmatic_scorer,
     ifeval,
     judge_scorer,
     judge_benchmark,
     judge_llm,
+    rubric_benchmark,
+    rubric_scorer,
+    RUBRIC_CRITERIA,
 )
 
 __all__ = [
@@ -45,12 +49,17 @@ __all__ = [
     "Evaluator",
     "exact_match_scorer",
     "mmlu_pro",
+    "mmlu_pro_mcq",
     "programmatic_scorer",
     "ifeval",
     "judge_scorer",
     "judge_benchmark",
     "judge_llm",
+    "rubric_benchmark",
+    "rubric_scorer",
+    "RUBRIC_CRITERIA",
 ]
+
 
 
 

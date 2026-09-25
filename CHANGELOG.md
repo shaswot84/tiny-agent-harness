@@ -19,7 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `programmatic_scorer()` to evaluate predictions against arbitrary callable criteria in benchmark examples.
   - Added built-in `ifeval` benchmark preset testing instruction following with verifiable constraints (sentence counts, word limits, punctuation constraints).
   - Added `judge_scorer()` and `judge_benchmark` supporting LLM-as-a-judge evaluation scoring predictions from `0.0` to `1.0` using Ollama Cloud (`gpt-oss:20b`).
-  - Refactored `TinyAgent.evaluation.benchmark` into a clean subpackage with separated benchmark files (`base.py`, `mmlu_pro.py`, `ifeval.py`, `judge.py`).
+  - Added `rubric_scorer()` and `rubric_benchmark` implementing multi-dimensional LLM-as-a-judge scoring across 4 fundamental rubrics: **Fluency**, **Correctness**, **Completeness**, and **Groundedness**, with structured JSON evaluation parsing and comprehensive reference test data.
+  - Refactored `TinyAgent.evaluation.benchmark` into a clean subpackage with separated benchmark files (`base.py`, `mmlu_pro.py`, `ifeval.py`, `judge.py`, `rubric.py`).
 - **Native ReAct Planner (`TinyAgent.planner.NativeReAct`)**:
   - Added `NativeReAct` planner subclass for native reasoning and native tool-calling models (e.g. `think=True`).
   - Eliminates prompt stuffing overhead and passes native model reasoning and tool responses directly without regex text extraction.

@@ -77,11 +77,17 @@ def test_native_react_planner():
     assert parsed.reasoning == "Native reasoning"
 
 
-def test_mmlu_pro_exact_match_scorer():
-    from TinyAgent import exact_match_scorer, mmlu_pro
+def test_mmlu_pro_benchmarks():
+    from TinyAgent import exact_match_scorer, mmlu_pro, mmlu_pro_mcq, judge_scorer
 
     assert len(mmlu_pro.examples) == 3
     assert mmlu_pro.name == "MMLU Pro"
+    assert mmlu_pro.scorer is judge_scorer
+    assert mmlu_pro.examples[0]["expected"] == "the cranial cavity"
+
+    assert len(mmlu_pro_mcq.examples) == 3
+    assert mmlu_pro_mcq.name == "MMLU Pro MCQ"
+    assert mmlu_pro_mcq.scorer is exact_match_scorer
 
     # Test exact_match_scorer with various formats
     ex = {"expected": "J"}
@@ -141,6 +147,51 @@ def test_judge_scorer_and_benchmark():
 
     assert len(judge_benchmark.examples) == 3
     assert judge_benchmark.name == "LLM-as-a-Judge"
+
+
+def test_rubric_scorer_and_benchmark():
+    from TinyAgent import rubric_scorer, rubric_benchmark, RUBRIC_CRITERIA, Response
+
+    assert len(RUBRIC_CRITERIA) == 4
+    assert "Fluency" in RUBRIC_CRITERIA
+    assert "Correctness" in RUBRIC_CRITERIA
+    assert "Completeness" in RUBRIC_CRITERIA
+    assert "Groundedness" in RUBRIC_CRITERIA
+
+    assert len(rubric_benchmark.examples) == 3
+    assert rubric_benchmark.name == "Rubric-Evaluation"
+    assert rubric_benchmark.scorer is rubric_scorer
+
+    example = rubric_benchmark.examples[0]
+
+    class MockRubricLLM:
+        def __init__(self, reply: str):
+            self.reply = reply
+
+        def generate(self, messages, tools=None):
+            return Response(content=self.reply)
+
+    # Valid JSON response
+    valid_json_reply = """
+    ```json
+    {
+      "fluency": 0.9,
+      "correctness": 1.0,
+      "completeness": 0.8,
+      "groundedness": 0.9
+    }
+    ```
+    """
+    judge_json = MockRubricLLM(valid_json_reply)
+    score = rubric_scorer("Photosynthesis explanation", example, judge=judge_json)
+    assert round(score, 2) == 0.90
+
+    # Fallback response
+    fallback_reply = "Scores: 1.0, 0.8, 0.8, 1.0 for the four criteria."
+    judge_fallback = MockRubricLLM(fallback_reply)
+    score_fallback = rubric_scorer("Photosynthesis explanation", example, judge=judge_fallback)
+    assert round(score_fallback, 2) == 0.90
+
 
 
 

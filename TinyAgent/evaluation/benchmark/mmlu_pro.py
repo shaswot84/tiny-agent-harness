@@ -1,5 +1,6 @@
 import re
 from .base import Benchmark
+from .judge import judge_scorer
 
 
 def exact_match_scorer(prediction: str, example: dict) -> bool:
@@ -8,9 +9,30 @@ def exact_match_scorer(prediction: str, example: dict) -> bool:
     return match.group(1) == example["expected"] if match else False
 
 
-# Three representative examples from MMLU Pro
+# Three examples adapted from MMLU Pro for LLM judge evaluation
 mmlu_pro = Benchmark(
     name="MMLU Pro",
+    examples=[
+        {
+            "task": "Which body cavity contains the pituitary gland?",
+            "expected": "the cranial cavity",
+        },
+        {
+            "task": "What is the approximate mean cranial capacity of Homo erectus?",
+            "expected": "just under 1000 cc",
+        },
+        {
+            "task": "According to Moore's 'ideal utilitarianism,' the right action is the one that brings about the greatest amount of what?",
+            "expected": "good",
+        },
+    ],
+    scorer=judge_scorer,
+)
+
+
+# Multiple-choice benchmark preset from MMLU Pro
+mmlu_pro_mcq = Benchmark(
+    name="MMLU Pro MCQ",
     examples=[
         {
             "task": """Which of the following is the body cavity that contains
@@ -39,3 +61,4 @@ Answer with only the letter.""",
     ],
     scorer=exact_match_scorer,
 )
+
