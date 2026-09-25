@@ -18,6 +18,9 @@ from .evaluation import (
     mmlu_pro,
     programmatic_scorer,
     ifeval,
+    judge_scorer,
+    judge_benchmark,
+    judge_llm,
 )
 
 __all__ = [
@@ -44,7 +47,11 @@ __all__ = [
     "mmlu_pro",
     "programmatic_scorer",
     "ifeval",
+    "judge_scorer",
+    "judge_benchmark",
+    "judge_llm",
 ]
+
 
 
 

@@ -114,4 +114,34 @@ def test_ifeval_programmatic_scorer():
     assert programmatic_scorer("Hark, traveller!", ex3) is False
 
 
+def test_judge_scorer_and_benchmark():
+    from TinyAgent import judge_scorer, judge_benchmark, Response
+
+    class MockJudgeLLM:
+        def __init__(self, score_str: str):
+            self.score_str = score_str
+
+        def generate(self, messages, tools=None):
+            return Response(content=self.score_str)
+
+    example = {
+        "task": "Explain API.",
+        "expected": "An API is a interface between two apps.",
+    }
+
+    # Test exact score parsing
+    judge_perfect = MockJudgeLLM("1.0")
+    assert judge_scorer("An API is an interface.", example, judge=judge_perfect) == 1.0
+
+    judge_partial = MockJudgeLLM("0.85\nExplanation follows...")
+    assert judge_scorer("An API connects services.", example, judge=judge_partial) == 0.85
+
+    judge_fallback = MockJudgeLLM("Cannot evaluate this.")
+    assert judge_scorer("irrelevant", example, judge=judge_fallback) == 0.0
+
+    assert len(judge_benchmark.examples) == 3
+    assert judge_benchmark.name == "LLM-as-a-Judge"
+
+
+
 
