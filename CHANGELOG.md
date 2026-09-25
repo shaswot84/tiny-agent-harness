@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `Benchmark` dataclass with `name`, `examples`, and `scorer` callback.
   - Added `Scorer` type definition for prediction and example evaluation (`(prediction: str, example: dict) -> bool | float`).
   - Added `Evaluator` class to benchmark agent instances over a suite of tasks, scoring predictions and calculating aggregate pass rates.
+  - Added `exact_match_scorer()` to extract and match single-letter multiple-choice answers (`A`-`J`).
+  - Added built-in `mmlu_pro` benchmark preset containing representative multiple-choice questions.
+  - Added `programmatic_scorer()` to evaluate predictions against arbitrary callable criteria in benchmark examples.
+  - Added built-in `ifeval` benchmark preset testing instruction following with verifiable constraints (sentence counts, word limits, punctuation constraints).
 - **Native ReAct Planner (`TinyAgent.planner.NativeReAct`)**:
   - Added `NativeReAct` planner subclass for native reasoning and native tool-calling models (e.g. `think=True`).
   - Eliminates prompt stuffing overhead and passes native model reasoning and tool responses directly without regex text extraction.

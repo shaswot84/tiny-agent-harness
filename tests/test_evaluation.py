@@ -76,3 +76,42 @@ def test_native_react_planner():
     assert parsed.content == "Final result"
     assert parsed.reasoning == "Native reasoning"
 
+
+def test_mmlu_pro_exact_match_scorer():
+    from TinyAgent import exact_match_scorer, mmlu_pro
+
+    assert len(mmlu_pro.examples) == 3
+    assert mmlu_pro.name == "MMLU Pro"
+
+    # Test exact_match_scorer with various formats
+    ex = {"expected": "J"}
+    assert exact_match_scorer("J", ex) is True
+    assert exact_match_scorer("The correct answer is J.", ex) is True
+    assert exact_match_scorer("Answer: (j)", ex) is True
+    assert exact_match_scorer("A", ex) is False
+    assert exact_match_scorer("No valid option", ex) is False
+
+
+def test_ifeval_programmatic_scorer():
+    from TinyAgent import programmatic_scorer, ifeval
+
+    assert len(ifeval.examples) == 3
+    assert ifeval.name == "IFEval"
+
+    # Example 1: sentence punctuation check (< 10)
+    ex1 = ifeval.examples[0]
+    assert programmatic_scorer("A short song with three lines! Fun times ahead. The end.", ex1) is True
+    assert programmatic_scorer(". . . . . . . . . .", ex1) is False
+
+    # Example 2: word count check (<= 150 words)
+    ex2 = ifeval.examples[1]
+    assert programmatic_scorer("A snappy modern digital photo frame.", ex2) is True
+    assert programmatic_scorer("word " * 151, ex2) is False
+
+    # Example 3: no commas check
+    ex3 = ifeval.examples[2]
+    assert programmatic_scorer("Hark traveller go unto the mountains with great haste", ex3) is True
+    assert programmatic_scorer("Hark, traveller!", ex3) is False
+
+
+
